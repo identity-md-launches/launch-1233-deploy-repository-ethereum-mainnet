@@ -7,10 +7,10 @@ Checked on 2026-10-10 with Foundry 1.8.3 and the compiler pinned by `foundry.tom
 | Command | Result |
 | --- | --- |
 | `forge build` | Pass; 115 source files compiled with the pinned compiler. |
-| `forge test -vv` | Pass; 65 checks across 10 suites, zero failures or skips. |
+| `forge test -vv` | Pass; 67 checks across 10 suites, zero failures or skips. |
 | `forge fmt --check` | Pass. |
 
-There are 64 unit/fuzz test functions and four invariant properties, which this Foundry version reports together as one additional invariant check. Fuzz tests use 256 runs. The invariant campaign uses 128 runs of depth 64, with **8,192 calls and zero handler reverts**, and `fail_on_revert = true`.
+There are 66 unit/fuzz test functions and four invariant properties, which this Foundry version reports together as one additional invariant check. Fuzz tests use 256 runs. The invariant campaign uses 128 runs of depth 64, with **8,192 calls and zero handler reverts**, and `fail_on_revert = true`.
 
 The stateful handler trades, transfers tokens, funds baskets, distributes fees, lowers shares, changes creator status and run price, verifies work, advances time, announces/cancels/closes projects, and withdraws holder/creator/team entitlements. Its properties check:
 
@@ -34,7 +34,7 @@ Other success/failure tests cover:
 - Quote/execution equality, tick crossings, multiple liquidity ranges, directional v4 protocol fees, ETH routes and TOKEN/IMD/TOKEN routes.
 - Fee splits throughout the allowed creator-share range, inactive creators, flushing before share/status changes, and 10/90 fees after closing.
 - Payment caps, zero/duplicate/unauthorized runs, shared job IDs across tokens and methods, verifier revocation and the full-run-price recording threshold.
-- Both close timers, cancellation/reannouncement, notice-block snapshots (the block before the notice; launch-block notices rejected; cancellation resets), transfers/purchases in the notice block and between notice and close, a late buyer who enters one block before close and cannot claim or profit, excluded balances, zero circulating supply, claim rounding and duplicate claims.
+- Both close timers, cancellation/reannouncement, notice-block snapshots (the block before the notice; launch-block notices rejected; cancellation resets), the pre-close snapshot and the two-snapshot minimum rule (purchases in the notice block and later carry nothing; tokens given away between notice and close forfeit their share, which stays locked; transfers after the close move nothing), a buyer who enters one block before a pending notice and exits right after it and cannot claim, a partial exit that keeps only the retained share with claims within the pool, a late buyer who enters one block before close and cannot claim or profit, excluded balances, zero circulating supply, claim rounding and duplicate claims.
 - Start-tick bounds whose maximum would exceed v4's per-tick liquidity capacity are rejected; a fuzz over accepted maxima launches at each one.
 - One Building project per creator, relaunch after close, signed-field mutation, wrong chain/factory, malformed and expired permits, EIP-1271 signers, paused/unconfigured state and UUID/metadata validation.
 - Constructor deployment on an empty chain, one-time wiring, owner access checks, two-step ownership and failed/reentrant IMD transfers.
@@ -53,12 +53,12 @@ Measurements from the final tests:
 | Factory deployment candidates | 9,434 |
 | Factory deployment gas, including real CREATE, salt search and hook deployment | 5,996,691 |
 
-The salt-search fuzz test recomputes CREATE2 addresses independently, checks all permission bits and bounds gas by `200 * attempts + 2,000`. The deployment measurement retrieves init code before measuring and executes a raw `CREATE`: this avoids Foundry dynamic test linking replacing `new Contract(...)` with a gas-free `vm.deployCode` cheatcode. The number does not include a deployment transaction's intrinsic/calldata gas. Deployment addresses and the starting salt affect search length; the owner/deployer must simulate the actual constructor as described in the README.
+The salt-search fuzz test recomputes CREATE2 addresses independently, checks all permission bits and bounds gas by `200 * attempts + 2,000`. The deployment measurement retrieves init code before measuring and executes a raw `CREATE`: this avoids Foundry dynamic test linking replacing `new Contract(...)` with a gas-free `vm.deployCode` cheatcode. The number does not include a deployment transaction's intrinsic/calldata gas. Deployment addresses and the starting salt affect search length: the count is geometric in the factory's own address (about 6% of addresses need more than 50,000 candidates, a few more than 150,000), and a different `hookSaltStart` re-rolls the factory address rather than resuming the search. The owner/deployer must simulate the actual constructor at the exact factory address and salt, and set the gas ceiling from that simulation, as described in the README.
 
 | Production contract | Runtime bytes | Creation-code bytes, excluding constructor arguments |
 | --- | ---: | ---: |
 | KeelToken | 4,100 | 4,860 |
-| KeelVault | 9,296 | 9,531 |
+| KeelVault | 9,531 | 9,766 |
 | KeelHook | 4,440 | 5,223 |
 | KeelFactory | 15,689 | 22,802 |
 | KeelRouter | 17,070 | 17,415 |

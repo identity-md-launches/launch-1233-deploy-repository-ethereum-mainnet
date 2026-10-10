@@ -175,36 +175,116 @@ contract KeelVaultTest is KeelTestBase {
         assertEq(vault.project(token).snapshotBlock, vm.getBlockNumber() - 1);
     }
 
-    function testSnapshotExcludesTransferAndPurchaseAfterNotice() public {
+    /// @dev Rights need the tokens at both snapshots: the block before the notice and the block before the
+    /// close. Purchases after the notice carry nothing; tokens given away between notice and close forfeit
+    /// their share, which stays locked; transfers after the close do not move the claim.
+    function testClaimNeedsTokensAtNoticeAndCloseSnapshots() public {
         uint256 bought = _buy(alice, 100 ether);
         _deposit(2 ether);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         // A purchase in the notice block itself (front-running the notice) is excluded as well.
         _buy(bob, 10 ether);
+        uint256 noticeBlock = vm.getBlockNumber();
         vault.announceClose(token);
         vm.warp(block.timestamp + 30 days);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
+        uint256 given = bought / 3;
         vm.prank(alice);
-        IERC20(token).transfer(bob, bought);
+        IERC20(token).transfer(bob, given);
         _buy(bob, 50 ether);
+        vm.roll(vm.getBlockNumber() + 1);
         vault.close(token);
         KeelVault.Project memory p = vault.project(token);
+        assertEq(p.snapshotBlock, noticeBlock - 1);
+        assertEq(p.closeBlock, vm.getBlockNumber() - 1);
+        // Circulating supply is the smaller of the two: only alice's purchase was out at the notice.
         assertEq(p.circulating, bought);
-        assertEq(vault.claimable(token, alice), p.poolAtClose);
+        uint256 expected = p.poolAtClose * (bought - given) / bought;
+        assertEq(vault.claimable(token, alice), expected);
+        assertEq(vault.claimable(token, bob), 0);
+        // Moving the remaining tokens after the close changes nothing for either side.
+        vm.prank(alice);
+        IERC20(token).transfer(bob, bought - given);
+        vm.roll(vm.getBlockNumber() + 1);
+        assertEq(vault.claimable(token, alice), expected);
         assertEq(vault.claimable(token, bob), 0);
         uint256 balanceBefore = imd.balanceOf(alice);
         vm.expectEmit(true, true, false, true, address(vault));
-        emit Claimed(token, alice, p.poolAtClose);
+        emit Claimed(token, alice, expected);
         vm.prank(alice);
         vault.claim(token);
-        assertEq(imd.balanceOf(alice), balanceBefore + p.poolAtClose);
+        assertEq(imd.balanceOf(alice), balanceBefore + expected);
         vm.prank(alice);
         vm.expectRevert(KeelVault.NothingToClaim.selector);
         vault.claim(token);
         vm.prank(bob);
         vm.expectRevert(KeelVault.NothingToClaim.selector);
         vault.claim(token);
-        assertEq(vault.project(token).basket, 0);
+        // The forfeited third stays locked in the closed basket.
+        assertEq(vault.project(token).basket, p.poolAtClose - expected);
+        _solvent();
+    }
+
+    /// @dev Review finding eef2109a: a buyer who landed in the block before a pending notice and sold right
+    /// after it kept a full basket claim. Exiting between notice and close now forfeits it.
+    function testTransientBuyerAroundNoticeForfeitsClaim() public {
+        _buy(alice, 1_000 ether);
+        _deposit(10_000 ether);
+        uint256 aliceEntitlementBefore = vault.project(token).basket;
+        vm.roll(vm.getBlockNumber() + 1);
+        // Block N-1: the notice is pending in the public mempool; bob buys a large position.
+        uint256 bobBefore = imd.balanceOf(bob);
+        uint256 bought = _buy(bob, 200_000 ether);
+        vm.roll(vm.getBlockNumber() + 1);
+        // Block N: the notice lands with snapshot N-1, which includes bob's purchase.
+        vault.announceClose(token);
+        vm.roll(vm.getBlockNumber() + 1);
+        // Block N+1: bob exits completely.
+        _sell(bob, bought);
+        assertLt(imd.balanceOf(bob), bobBefore);
+        vm.warp(block.timestamp + 31 days);
+        vm.roll(vm.getBlockNumber() + 1);
+        vault.close(token);
+        KeelVault.Project memory p = vault.project(token);
+        assertGe(p.poolAtClose, aliceEntitlementBefore);
+        assertEq(vault.claimable(token, bob), 0);
+        assertEq(vault.claimable(token, alice), p.poolAtClose);
+        vm.prank(bob);
+        vm.expectRevert(KeelVault.NothingToClaim.selector);
+        vault.claim(token);
+        vm.prank(alice);
+        assertEq(vault.claim(token), p.poolAtClose);
+        _solvent();
+    }
+
+    /// @dev A partial exit keeps rights only for what is still held at the close; claims stay within the pool.
+    function testPartialExitBetweenNoticeAndCloseKeepsOnlyRetainedShare() public {
+        uint256 aliceTokens = _buy(alice, 1_000 ether);
+        _deposit(10_000 ether);
+        vm.roll(vm.getBlockNumber() + 1);
+        uint256 bought = _buy(bob, 50_000 ether);
+        vm.roll(vm.getBlockNumber() + 1);
+        vault.announceClose(token);
+        vm.warp(block.timestamp + 31 days);
+        vm.roll(vm.getBlockNumber() + 1);
+        uint256 sold = bought / 2;
+        _sell(bob, sold);
+        uint256 retained = bought - sold;
+        vm.roll(vm.getBlockNumber() + 1);
+        vault.close(token);
+        KeelVault.Project memory p = vault.project(token);
+        assertEq(p.circulating, aliceTokens + retained);
+        uint256 a = vault.claimable(token, alice);
+        uint256 b = vault.claimable(token, bob);
+        assertEq(a, p.poolAtClose * aliceTokens / (aliceTokens + retained));
+        assertEq(b, p.poolAtClose * retained / (aliceTokens + retained));
+        assertLe(a + b, p.poolAtClose);
+        assertLe(p.poolAtClose - a - b, 1);
+        vm.prank(alice);
+        vault.claim(token);
+        vm.prank(bob);
+        vault.claim(token);
+        assertEq(vault.project(token).totalClaimed, a + b);
         _solvent();
     }
 
@@ -212,15 +292,15 @@ contract KeelVaultTest is KeelTestBase {
     function testLateBuyerCannotCaptureHolderBasket() public {
         _buy(alice, 1_000 ether);
         _deposit(10_000 ether);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         vault.announceClose(token);
         uint256 aliceEntitlementBefore = vault.project(token).basket;
         vm.warp(block.timestamp + 31 days);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         // Bob buys a large position in block N-1 and the owner closes in block N.
         uint256 bobBefore = imd.balanceOf(bob);
         uint256 bought = _buy(bob, 200_000 ether);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         vault.close(token);
         KeelVault.Project memory p = vault.project(token);
         assertGe(p.poolAtClose, aliceEntitlementBefore);

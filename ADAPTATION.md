@@ -6,8 +6,9 @@ The project arrived already shaped for an `evm_contracts` launch: four construct
 no `DELEGATECALL`/`CALLCODE`/`SELFDESTRUCT` in their runtime, `bytecode_hash = "none"`, every library
 function internal, and constructors that touch no other contract (the factory's constructor only runs
 the pure salt search and CREATE2-deploys `KeelHook` itself). No launch rule required a code change.
-The changes below come from the imported audit: the two findings that reproduce are fixed with
-tests, the other three are left as they are and explained.
+The changes below come from the imported audit and from the independent review of the first
+accepted round: the findings that reproduce are fixed with tests, the others are left as they are
+and explained. Review responses are in `.imd-responses.json`.
 
 Protected files (`foundry.toml`, `remappings.txt`, `lib/`, `.gitmodules`, package files) are untouched.
 `launch.json` is not written; it belongs to the manifest step.
@@ -32,14 +33,41 @@ Protected files (`foundry.toml`, `remappings.txt`, `lib/`, `.gitmodules`, packag
   exclusions, rounding and the `Project` struct are unchanged; `snapshotBlock` is simply set earlier.
 - Tests: `testLateBuyerCannotCaptureHolderBasket` (the audit scenario: bob's claim reverts with
   `NothingToClaim`, alice keeps the whole basket, bob loses IMD),
-  `testSnapshotExcludesTransferAndPurchaseAfterNotice` (purchase in the notice block and transfers or
-  purchases between notice and close carry no rights), `testNoticeSnapshotRejectsLaunchBlockAndResetsOnCancel`,
+  `testNoticeSnapshotRejectsLaunchBlockAndResetsOnCancel`,
   `testCloseAtExactThirtyDaysWithMatureNotice` (snapshot equals notice block minus one).
   `test/helpers/KeelTestBase.sol` (`_matureClose`), `test/KeelInvariant.t.sol` (`noticeOrClose`) and
   `testCloseRequiresBothTimingThresholdsAndCancellationRestartsNotice` advance one block before the
   notice because the tests launch and trade in the same block; this encodes the new rule, not a
   behaviour the launch forbids.
 - Docs: README "Closing and holder claims" and `docs/VALIDATION.md` describe the notice-time snapshot.
+
+### 1b. Claims need the tokens at the close as well (review `eef2109a…`, medium) — reproduced, fixed
+
+- File: `src/KeelVault.sol` (`close`, `claimable`, new private view `_circulating`, new `Project`
+  field `closeBlock`).
+- Reproduction: the reviewer's proof, run unmodified against the round-one code, fails as reported.
+  The notice-time snapshot only closes the same-block race: a notice pending in the public mempool
+  for one block lets a buyer land in the snapshot block, sell right after the notice and still claim
+  pro rata (attacker claim 12,074 IMD of a 12,394 IMD basket, pre-notice holder 319 IMD).
+- Fix (the reviewer's third remedy, which keeps `announceClose(token)`, every event and every role):
+  `close()` records a second snapshot `closeBlock = block.number - 1` and sets `circulating` to the
+  smaller of the circulating supplies at `snapshotBlock` and `closeBlock`; `claimable()` pays
+  `floor(poolAtClose * min(balanceAt(holder, snapshotBlock), balanceAt(holder, closeBlock)) / circulating)`.
+  The sum of per-holder minima never exceeds the minimum of the sums, so total claims stay within
+  `poolAtClose`. Tokens sold or given away between the notice and the close forfeit that share, which
+  stays locked like any other unclaimed amount. A transient buyer must now hold through the whole
+  notice period to an owner-chosen close block to profit, instead of across one block boundary. The
+  other remedies (an owner-chosen or fixed 32-block-old snapshot) were not taken: both change the
+  notice signature or reject the proof's own layout (notice two blocks after launch).
+- Tests: `testTransientBuyerAroundNoticeForfeitsClaim` (the reported scenario: claim 0, holder keeps
+  the whole basket), `testPartialExitBetweenNoticeAndCloseKeepsOnlyRetainedShare` (claims proportional
+  to retained balances, within the pool), and `testClaimNeedsTokensAtNoticeAndCloseSnapshots`, which
+  replaces `testSnapshotExcludesTransferAndPurchaseAfterNotice`: that test asserted that a transfer
+  between notice and close keeps the sender's full claim, which is the behaviour the finding exploits.
+  The invariant campaign (transfers and trades at any time around notice and close) still holds
+  `totalClaimed <= poolAtClose`.
+- Docs: README "Closing and holder claims" gives the new formula, the forfeiture rule and the
+  private-relay recommendation; `docs/VALIDATION.md` lists the new coverage.
 
 ### 2. `setStartTickBounds` rejects maxima that can never launch (audit `02328646…`, low) — reproduced, fixed
 
@@ -56,6 +84,30 @@ Protected files (`foundry.toml`, `remappings.txt`, `lib/`, `.gitmodules`, packag
 - Tests: `testStartTickBoundsRejectMaximaAboveLiquidityCap` (349,200 and the 880,000–886,999 region
   rejected, 349,199 accepted and launchable) and `testFuzzAcceptedBoundsAlwaysLaunch` (every accepted
   maximum in [-200000, 400000] launches; every rejection is `InvalidTick` at or above 349,200).
+
+## Advisory review findings — documentation only
+
+### Factory constructor gas is a per-address draw (review `5456090d…`, low) — reproduced, documented
+
+`hookSaltStart` is part of the factory init code, so changing it changes the factory's CREATE2
+address and re-rolls the salt search rather than resuming it; the candidate count is geometric
+(p = 2^-14) in the factory address, with about 6% of addresses above 50,000 candidates. The brief
+fixes the constructor and its arguments, so no code changes. README "Deployment parameters" and
+`docs/VALIDATION.md` now say to simulate with the exact factory address and salt, set the gas ceiling
+from the observed count, and that a new offset is a re-roll.
+
+### The 1% fee applies only to the canonical pool (review `573e2116…`, low) — reproduced, documented
+
+The PoolManager is permissionless and the token has no transfer restriction, so a hookless
+TOKEN/IMD pool pays nothing to the team, creator or basket. Closing this needs a token-layer fee,
+which the brief forbids. README "Fees and solvency" now states the limitation.
+
+### Owner chooses the snapshot timing (review `c55625e6…`, info) — trust assumption, documented
+
+There is no earliest notice time after launch and no latest close time after a notice, so the owner
+picks which holders are in the snapshot and later fees accrue to that set. README "Closing and
+holder claims" and "Operational trust and release review" record this power and the multisig and
+published-policy mitigation.
 
 ## Findings reviewed and left unchanged
 
@@ -91,9 +143,12 @@ address from the deployment record (it is validated against `factory.vault()` an
 
 ## Checks
 
-`forge build`, `forge test` (65 tests across 10 suites, including the invariant campaign with
+`forge build`, `forge test` (67 tests across 10 suites, including the invariant campaign with
 `fail_on_revert = true`) and `forge fmt --check` pass with the project's own configuration and no
-network, environment variables or FFI. Slither and Mythril were not run.
+network, environment variables or FFI. The reviewer's proof for `eef2109a…` passes on this tree.
+The audit proof for `aab3704d…` sends its notice in the launch block, which the round-one fix rejects
+with `CloseNotReady`; it fails identically on the round-one tree and is covered by
+`testLateBuyerCannotCaptureHolderBasket`. Slither and Mythril were not run.
 
 ## Deployment notes for the manifest and deployer
 
@@ -101,7 +156,11 @@ network, environment variables or FFI. Slither and Mythril were not run.
   `KeelFactory($owner, $contract:KeelVault, $contract:KeelToken, 0)`,
   `KeelRouter($owner, $contract:KeelFactory)`. `KeelHook` is created by the factory constructor and
   read from `factory.hook()`; do not deploy it separately.
-- Simulate the factory constructor before sending: the CREATE2 salt search is on chain and measured
-  at about 6 million gas in tests; its length depends on the factory address.
+- Simulate the factory constructor before sending, with the exact factory address and salt the
+  service will use: the CREATE2 salt search is on chain and measured at about 6 million gas in tests,
+  but its length is a geometric draw in the factory address (about 6% of addresses exceed 50,000
+  candidates, roughly 118 gas each on top of about 4.6 million fixed). Set the gas ceiling from the
+  simulated count, not the test figure. A different `hookSaltStart` changes the factory address and
+  re-rolls the search; it does not resume it.
 - The deployed addresses of `KeelToken`, `KeelVault`, `KeelFactory`, `KeelHook` and `KeelRouter` are
   published by the deployment handoff after the transaction confirms; no address is invented here.

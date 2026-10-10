@@ -28,6 +28,7 @@ contract KeelVault is Ownable2Step, ReentrancyGuard {
         uint256 basket;
         uint256 creatorAccrued;
         uint256 snapshotBlock;
+        uint256 closeBlock;
         uint256 poolAtClose;
         uint256 circulating;
         uint256 totalClaimed;
@@ -144,6 +145,7 @@ contract KeelVault is Ownable2Step, ReentrancyGuard {
             basket: 0,
             creatorAccrued: 0,
             snapshotBlock: 0,
+            closeBlock: 0,
             poolAtClose: 0,
             circulating: 0,
             totalClaimed: 0,
@@ -248,8 +250,10 @@ contract KeelVault is Ownable2Step, ReentrancyGuard {
     }
 
     /// @dev The holder snapshot is fixed at the block before the notice, so tokens bought once a close is
-    /// public (or in the notice block itself) carry no basket rights. The pool must already hold the
-    /// locked position at that block: a notice in the launch block would snapshot an empty token.
+    /// public (or in the notice block itself) carry no basket rights. A claim additionally requires the
+    /// tokens to still be held at the block before the close (see `close`), so a position opened while the
+    /// notice is pending and sold right after it carries nothing either. The pool must already hold the
+    /// locked position at the snapshot block: a notice in the launch block would snapshot an empty token.
     function announceClose(address token) external onlyOwner {
         Project storage p = _building(token);
         if (p.closeNotice != 0) revert NoticeExists();
@@ -281,10 +285,14 @@ contract KeelVault is Ownable2Step, ReentrancyGuard {
         ) revert CloseNotReady();
         IKeelHook(hook).distribute(token);
         uint256 snapshot = p.snapshotBlock;
+        // Holders are paid on the smaller of their notice-snapshot and pre-close balances, so the
+        // circulating supply is the smaller of the two supplies: the sum of per-holder minima never
+        // exceeds the minimum of the sums, which keeps total claims within poolAtClose.
+        uint256 closeBlock = block.number - 1;
         IKeelToken t = IKeelToken(token);
-        uint256 circulating =
-            t.totalSupply() - t.balanceAt(C.POOL_MANAGER, snapshot) - t.balanceAt(C.DEAD, snapshot);
+        uint256 circulating = Math.min(_circulating(t, snapshot), _circulating(t, closeBlock));
         p.phase = Phase.Closed;
+        p.closeBlock = closeBlock;
         p.poolAtClose = p.basket;
         p.circulating = circulating;
         buildingToken[p.creator] = address(0);
@@ -297,7 +305,9 @@ contract KeelVault is Ownable2Step, ReentrancyGuard {
             p.phase != Phase.Closed || p.circulating == 0 || claimed[token][holder]
                 || holder == C.POOL_MANAGER || holder == C.DEAD
         ) return 0;
-        return Math.mulDiv(p.poolAtClose, IKeelToken(token).balanceAt(holder, p.snapshotBlock), p.circulating);
+        IKeelToken t = IKeelToken(token);
+        uint256 held = Math.min(t.balanceAt(holder, p.snapshotBlock), t.balanceAt(holder, p.closeBlock));
+        return Math.mulDiv(p.poolAtClose, held, p.circulating);
     }
 
     function claim(address token) external nonReentrant returns (uint256 amount) {
@@ -340,6 +350,10 @@ contract KeelVault is Ownable2Step, ReentrancyGuard {
     function _building(address token) private view returns (Project storage p) {
         p = _known(token);
         if (p.phase != Phase.Building) revert NotBuilding();
+    }
+
+    function _circulating(IKeelToken t, uint256 pastBlock) private view returns (uint256) {
+        return t.totalSupply() - t.balanceAt(C.POOL_MANAGER, pastBlock) - t.balanceAt(C.DEAD, pastBlock);
     }
 
     function _verifier() private view {
