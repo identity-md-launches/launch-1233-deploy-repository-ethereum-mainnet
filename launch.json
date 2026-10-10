@@ -1,0 +1,22 @@
+{
+  "kind": "evm_contracts",
+  "contracts": [
+    {
+      "contract": "KeelToken",
+      "constructorArgs": []
+    },
+    {
+      "contract": "KeelVault",
+      "constructorArgs": ["$owner"]
+    },
+    {
+      "contract": "KeelFactory",
+      "constructorArgs": ["$owner", "$contract:KeelVault", "$contract:KeelToken", "0"]
+    },
+    {
+      "contract": "KeelRouter",
+      "constructorArgs": ["$owner", "$contract:KeelFactory"]
+    }
+  ],
+  "notes": "Ethereum mainnet (chain 1). Change made: added launch.json describing the accepted contracts; no contract logic, fee numbers, roles, limits, events or configuration changed. Deploy only the four listed constructors, in order, with zero ETH and no initialization calls. KeelToken is the locked EIP-1167 clone template. KeelFactory searches the CREATE2 salt on chain starting at 0 and deploys KeelHook itself; do not deploy KeelHook separately. Before broadcasting, simulate the actual KeelFactory constructor in the resolved deployment context: tests measured about 6 million gas, but salt-search cost depends on the deployment addresses. The factory remains paused after deployment. Afterwards, the owner completes setup in separate transactions, in order: vault.wire(factory), factory.setSigner, factory.setStartTickBounds, vault.setVerifier, router.setEthPool, then factory.setPaused(false), using the owner's selected settings. Publish the confirmed deployed addresses of KeelToken, KeelVault, KeelFactory, KeelHook and KeelRouter; obtain KeelHook from KeelFactory.hook() and confirm it against the HookDeployed event. No mainnet deployment addresses are asserted by this manifest."
+}
