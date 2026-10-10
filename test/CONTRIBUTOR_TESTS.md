@@ -12,7 +12,35 @@ configuration, dependencies, and all previously accepted tests are unchanged.
 | `test/KeelBoundaryProperties.t.sol` | Fuzzes launches over the entire accepted tick interval and creator-share range, pins both tick endpoints, exercises one-wei and percentage-fee boundaries, checks repeated small trading cycles, name/symbol length limits, inclusive deadlines, and ECDSA malleability rejection followed by successful use of the original signature. |
 | `test/KeelCheckpointInvariant.t.sol` | Adds a four-actor token handler with an independent balance and allowance ledger. Random sequences include transfers, delegated transfers, finite/infinite approvals, block advancement, overdraw attempts, unapproved spending, and attempted reinitialization. Invariants compare current state and immutable historical balances, including blocks with no transfers, against the model. |
 | `test/KeelRouteInvariant.t.sol` | Adds a three-actor handler for all twelve directed routes among ETH, IMD, and two project tokens. Random sequences include different payers/recipients, donations, distributions, buy/sell cycles, slippage rejection, and forged callbacks. Checks actual execution against quotes, exact payer/recipient deltas, ERC-6909 fee backing, vault liabilities, isolated router donations, and conservation of ETH and token supplies. |
+| `test/KeelSnapshotTiming.t.sol` | Pins the block each step of the close sequence runs in. Checks that the shared `_matureClose` helper notices and closes in different blocks; a five-entry matrix around the two snapshots (an early holder, a buyer in the block before the notice who holds, one who sells right after the notice, a buyer in the notice block, a buyer in the block before the close) with every claim, every `NothingToClaim` revert and the locked remainder asserted; and a fuzz over the fraction a pre-notice buyer keeps until the close, from full exit to full hold. |
 | `test/CONTRIBUTOR_TESTS.md` | This change inventory, property rationale, and deployment/testing limitations. |
+
+## Revision for review finding 4b85d9c3 (block caching under via-IR)
+
+With `via_ir = true` the compiler reads `NUMBER` once per call frame, so a second
+`vm.roll(block.number + 1)` in the same function re-rolls to the block already
+reached. Reproduced on this tree: after `vm.roll(100)`, three such rolls leave
+`vm.getBlockNumber()` at 101. The rolls the finding names in `test/KeelVault.t.sol`
+had already been converted to `vm.roll(vm.getBlockNumber() + 1)` by the accepted
+vault revision that added `closeBlock`, and `testTransientBuyerAroundNoticeForfeitsClaim`
+from that revision already buys one block before `announceClose`; both sequences
+were replayed and run in distinct blocks (notice 101, purchase 102, close 103;
+purchase 101, notice 102, sale 103, close 104). The cached rolls that remained:
+
+- `test/helpers/KeelTestBase.sol`, `_matureClose`: both rolls now read the block
+  through the cheatcode. Before, the notice and the close ran in the same block
+  (`snapshotBlock` and `closeBlock` both 100); now the close runs one block after
+  the notice (`snapshotBlock` 100, `closeBlock` 101). Every test using the helper
+  passes with its assertions unchanged.
+- `test/KeelVault.t.sol`, `testCloseRequiresBothTimingThresholdsAndCancellationRestartsNotice`:
+  its two rolls now use the cheatcode form, so the close is attempted one block
+  after the second notice as the sequence intends. Assertions are unchanged.
+- `test/KeelInvariant.t.sol`: the handler's three `vm.roll(block.number + 1)`
+  sites were examined and left alone. Each is the only block read in its own
+  external call frame, so nothing is cached there.
+- Added `test/KeelSnapshotTiming.t.sol` (see the table above).
+
+No contract source changed in this revision.
 
 ## Properties and non-vacuity
 
@@ -44,14 +72,15 @@ forge test
 forge fmt --check
 ```
 
-Local verification: all three commands pass. `forge test` reports 91 tests
-across 15 suites, zero failures, and zero skips. The two added invariant
+Local verification: all three commands pass. `forge test` reports 96 tests
+across 16 suites, zero failures, and zero skips. The two added invariant
 campaigns each execute 24,576 calls without unexpected reverts; the retained
 vault campaign executes 8,192. The build emits lint warnings and the expected
 deprecation warning for the test-only forced-ETH helper.
 
 No additional dependencies, network, fork, FFI, environment configuration, or
-`vm.setEnv` are required. Integration fixtures execute the real vendored v4
+`vm.setEnv` are required. A test that sequences several rolls in one function
+must read the block through `vm.getBlockNumber()`; see the revision section. Integration fixtures execute the real vendored v4
 PoolManager at its configured address and use the existing MockIMD fixture.
 The forced-ETH helper is test-only and exists solely to model unsolicited ETH;
 it is not one of the application contracts checked for forbidden opcodes.

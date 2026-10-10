@@ -128,7 +128,7 @@ contract KeelVaultTest is KeelTestBase {
         uint256 launchTime = vault.project(token).launchedAt;
         vm.expectRevert(KeelVault.CloseNotReady.selector);
         vault.close(token);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         vault.announceClose(token);
         vm.expectRevert(KeelVault.NoticeExists.selector);
         vault.announceClose(token);
@@ -141,7 +141,7 @@ contract KeelVaultTest is KeelTestBase {
         vm.warp(launchTime + 30 days);
         vault.announceClose(token);
         vm.warp(launchTime + 37 days - 1);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         vm.expectRevert(KeelVault.CloseNotReady.selector);
         vault.close(token);
         vm.warp(launchTime + 37 days);

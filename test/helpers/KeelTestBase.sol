@@ -115,10 +115,13 @@ abstract contract KeelTestBase is Test {
 
     function _matureClose() internal {
         // The holder snapshot is the block before the notice, so leave the launch/purchase block first.
-        vm.roll(block.number + 1);
+        // Read the block through the cheatcode: with via-IR the compiler reads NUMBER once per call frame,
+        // so a second `vm.roll(block.number + 1)` would re-roll to the same block and the close would
+        // land in the notice block.
+        vm.roll(vm.getBlockNumber() + 1);
         vault.announceClose(token);
         vm.warp(block.timestamp + 31 days);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         vault.close(token);
     }
 
