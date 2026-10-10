@@ -5,6 +5,8 @@ export const config = {
   deploymentBlock: 26162060,
   sourceCommit: "b33b5572550632fa7512dd5eddb6ef589223bc08",
   rpcUrls: ["https://ethereum-rpc.publicnode.com", "https://eth.drpc.org"],
+  uploadUrl: "",
+  ipfsGateway: "https://ipfs.io/ipfs/",
   explorer: "https://etherscan.io",
   imdExplorer: "https://explorer.imd.fun",
   addresses: {

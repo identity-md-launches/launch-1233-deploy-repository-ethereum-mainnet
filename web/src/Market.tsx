@@ -191,7 +191,11 @@ export function Market({ data, error, loading, refresh }: PageProps) {
               <span />
             </div>
             <span className="eyebrow">THE FIRST CHAPTER</span>
-            <h3>No launches yet. Launches open soon.</h3>
+            <h3>
+              {data.paused
+                ? "No launches yet. Launches open soon."
+                : "No launches yet."}
+            </h3>
             <p>Good things start with a build.</p>
             <a href="#/launch" className="button">
               Explore the launch form <Icon name="arrow" />
@@ -278,8 +282,8 @@ function TokenCard({
           <strong className="mono">{number(t.priceImd, 6)}</strong>
         </div>
         <div>
-          <span className="muted tiny">Market cap · IMD</span>
-          <strong className="mono">{number(t.marketCapImd, 2)}</strong>
+          <span className="muted tiny">FDV · IMD</span>
+          <strong className="mono">{number(t.fdvImd, 2)}</strong>
         </div>
       </div>
       {t.priceError && (

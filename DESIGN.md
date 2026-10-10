@@ -27,7 +27,7 @@ These are the active global CSS custom properties, not a proposed palette:
 
 The component stylesheet also uses local neutral shades for input, hover, split-bar and illustration details. Inputs have a visible `#4c4c56` boundary on `#15151a`; trading amount panels use `#565661`. Primary button labels are `#111115`. The island has its own small scoped set: `--island-bg: #050505`, `--island-border: #252527`, `--island-text: #ededf0`, and `--island-muted: #aaaab2`.
 
-Status always has text: Building, Closed, Preview, Quiet, No notice, Notice active. Visited stalls also receive a check and an accessible visited label. Errors use a more visible neutral border and a message, not a color code. Forced-colors rules restore system text, controls and focus where chrome gradients would otherwise disappear. Measured pairs and unresolved image/gradient contrast checks are recorded in [the validation](docs/website/validation-browser.md).
+Status always has text: Building, Closed, Preview, Quiet, No notice, Notice active. Visited stalls also receive a check and an accessible visited label; the live sign stays dark chrome. Errors use a more visible neutral border and a message, not a color code. Forced-colors rules restore system text, controls and focus where chrome gradients would otherwise disappear. Measured pairs and unresolved image/gradient contrast checks are recorded in [the delivery review](README.md#delivery-checks-and-interface-review).
 
 ## Typography
 
@@ -56,15 +56,15 @@ The shared shell is at most 1512px wide. Desktop gutters are 56px, reduced to 32
 
 All scrollbars are hidden while normal scrolling remains available. Document overflow was checked at 320px, 390px and desktop widths. Native browser zoom and physical-device behavior have separate validation limits; viewport emulation is not claimed as either.
 
-The island owns a full-viewport layout rather than the shared site shell. Its ground projection is oblique on desktop and top-down in portrait, with sprites scaled 1.6× on phone. Height-sensitive rules scale the scene and reserve space for controls on short phones. The whole island and Skip fit in the checked 320×568, 360×640 and 390×844 viewports. Dialog placement moves to the top when the player is low on the map.
+The island owns a full-viewport layout rather than the shared site shell. Its ground projection is oblique on desktop and top-down in portrait, with sprites scaled 1.6× on phone. The mobile scene now uses a 760×1,000 SVG viewBox across the available width, with a minimum 850px island height and 180px reserved for controls. Short screens scroll vertically instead of shrinking the robots or hiding the nearby-stop prompt. The complete island is 850px high at the checked 390×844 viewport; 320px reflow was also checked. Trees are restricted to back/side edges on mobile. Dialog placement moves to the top when the player is low on the map.
 
 ## Elevation & Depth
 
 Card depth comes primarily from neutral surface changes and thin borders. Metallic buttons have a fine inset highlight. Token avatars combine a repeated fine-line texture with a silver gradient and subtle inset/drop shadows. Hero artwork includes its own dark left-side scrim so the title sits over a quiet area.
 
-The island combines an SVG floor grid, extruded slab, dark shards, depth-sorted trees/robots/player, softly lit paths and an obelisk. UI labels and dialog boxes sit above the SVG scene. The tour menu uses a dark opaque surface and a soft shadow; dialog text uses a black box with a light border. These are nonmodal regions, leaving Skip and the gameplay controls accessible.
+The island combines an SVG floor grid, extruded slab, dark shards, trees behind the depth-sorted stalls and player, softly lit paths and an obelisk. Live chrome signs and transparent stall/robot hit areas sit above the SVG scene. Signs are at least 46px tall, with an 11px stop title, 10px monospaced main figure, a lit border and hover/press/nearby highlighting. All stall and robot targets are at least 44px in both dimensions. The tour menu uses a dark opaque surface and a soft shadow; dialog text uses a black box with a light border. These are nonmodal regions, leaving Skip and the gameplay controls accessible.
 
-The forest and K mark are original code-drawn local SVGs: [chrome-forest.svg](web/public/chrome-forest.svg) and [keel-mark.svg](web/public/keel-mark.svg). The mark is reused by the site header/footer, island header and HQ. Nothing needs an image service at runtime.
+The forest and K mark are original code-drawn local SVGs: [chrome-forest.svg](web/public/chrome-forest.svg) and [keel-mark.svg](web/public/keel-mark.svg). The mark is reused by the site header/footer, island header and HQ. Built-in art is local. Creator images use HTTPS or the configured IPFS gateway; uploads use an optional configured service.
 
 ## Shapes
 
@@ -78,7 +78,7 @@ Card borders remain 1px. Keyboard focus is a 2px white outline with a 4px offset
 | --- | --- | --- |
 | `Logo` | `components.tsx` | Shared ribbon K + Syncopate KEEL; optional small size |
 | `Icon` | `components.tsx` | One inline SVG stroke set; decorative and inherits text color |
-| `Avatar` | `components.tsx` | HTTPS metadata image; brushed chrome first ticker letter when missing/failed |
+| `Avatar` | `components.tsx` | HTTPS/IPFS image; explicit local blob preview support; brushed chrome ticker letter (K when empty) on missing/failed images |
 | `Chip` | `components.tsx` | Text status; optional live dot |
 | `Pulse` | `components.tsx` | Accessible progress bar, full at 20; Quiet below 0.5; last-build text |
 | `FeeSplit` | `components.tsx` | Launch share preview; team 10%, creator 0–80%, basket remainder |
@@ -88,12 +88,14 @@ Card borders remain 1px. Keyboard focus is a 2px white outline with a 4px offset
 | `.card` | `styles.css` | Shared surface, border and 20px radius |
 | `Market`, `TokenCard` | `Market.tsx` | Search/filter/list; loading, unavailable, empty and real-token states |
 | `Launch` | `Launch.tsx` | Native fields, live preview/share split, permit disclosure, linked validation errors, focused invalid field and pending state |
-| `TokenPage`, `Trade`, `RunRow` | `TokenPage.tsx` | Quote review, approval/trade state, verified run references, close countdown, claim state |
+| `TokenPage`, `Trade`, `RunRow`, `CreatorPanel` | `TokenPage.tsx` | Quote review with balance gating, approval/trade state, notice warning, run references, close countdown, holder and creator claims, irreversible share decrease |
+| `WalletChooser` | `WalletChooser.tsx` | Native modal dialog with installed-wallet names/icons, remembered choice, Disconnect, no-wallet link copying, Escape and focus return |
+| `ImagePicker` | `ImagePicker.tsx` | File picker/drop zone, local square WEBP conversion, Replace/Remove, upload availability/error text, secondary HTTPS/IPFS field |
 | `Island` | `Island.tsx`, `island.css` | Tile movement, collision checks, tap-to-walk, D-pad, A/Enter, paged dialog and tour menu |
 
-Buttons and links are native elements. The site has one main landmark and a keyboard skip link. Route changes focus the main region without hiding the header by scrolling. Forms use visible labels; custom launch errors are linked to the invalid input and focus it. Pending launch fields and pending trade fields are disabled to keep the reviewed values stable. Wallet disconnects clear the displayed account.
+Buttons and links are native elements. The site has one main landmark and a keyboard skip link. Route changes focus the main region; token Buy links then scroll to the trade card and focus its amount input. Forms use visible labels; custom launch errors are linked to the invalid input and focus it. Pending launch fields and pending trade fields are disabled to keep the reviewed values stable. Wallet disconnects clear the displayed account and detach the selected provider listeners. Website, X and Telegram share the same icons between launch fields and token links; their validation hints stay beside each input. Image conversion disables launch until preparation finishes.
 
-The island supports arrows/WASD, Enter/Space for interaction, on-screen D-pad/A and tap-to-walk destination labels. Its menu provides a named stop list. Escape closes the menu or dialog and returns focus. Visit progress and dynamic messages have accessible text. Motion is enabled only with `prefers-reduced-motion: no-preference`; the island menu pauses ambient animation, and desktop hero leaves have a pause button. Press feedback uses `scale(.96)` and brief transitions; there is no autoplay audio.
+The island supports arrows/WASD, Enter/Space for interaction, on-screen D-pad/A and tap-to-walk destination labels. D-pad pointer presses do not retain button focus; they return focus to the scene. Enter and Space inside the scene talk or advance after using those controls. A visible “Press Enter or A to talk to <stop>” prompt remains on phones. Its menu provides a named stop list. Escape closes the menu or dialog and returns focus. Visit progress and dynamic messages have accessible text. Motion is enabled only with `prefers-reduced-motion: no-preference`; the island menu pauses ambient animation, and desktop hero leaves have a pause button. Press feedback uses `scale(.96)` and brief transitions; there is no autoplay audio.
 
 ## Do's and Don'ts
 
@@ -102,7 +104,7 @@ The island supports arrows/WASD, Enter/Space for interaction, on-screen D-pad/A 
 - Keep chain values nullable until a successful read. A failed read is not a zero, and test fixtures never belong in the production UI.
 - Keep addresses in `config.ts`; derive prices, balances, runs and statuses through the chain layer. Preserve exact bigint amounts for transaction arguments.
 - Treat metadata as plain text and use the URL filtering already implemented. Preserve first-letter chrome fallback avatars.
-- Keep all site assets local and retain relative export URLs. Never make a page depend on a backend, font CDN or guessed launch-gate endpoint.
+- Keep built-in assets local and retain relative export URLs. Remote creator images and the configured upload endpoint are explicit exceptions. Never guess a launch-gate or upload endpoint.
 - Preserve the intentionally sealed classified message; the island's hidden area has no explanatory lore.
 
-This document describes the final implementation. Review coverage, fixes, evidence and remaining limits are in [docs/website/validation.md](docs/website/validation.md). The design-review method follows Jakub Krehel's Better Interface (MIT); the documentation method is adapted from Paul Bakaus's Impeccable (Apache-2.0). [Notices and licenses](docs/BETTER_INTERFACE_LICENSE) are retained.
+This document describes the final source and rendered export. Review coverage, fixes, evidence and remaining limits are in [README.md](README.md#delivery-checks-and-interface-review). The review used the pinned Better Interface reference, with its six domains and implementation-documentation method.

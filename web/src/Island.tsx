@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import type { MarketData } from "./chain/types";
+import { formatAmount } from "./chain/utils";
 import "./island.css";
 
 type Point = { x: number; y: number };
@@ -130,7 +132,82 @@ const walkable = (p: Point) =>
   !STOPS.some((s) => s.x === p.x && s.y === p.y) &&
   !TREES.some((t) => Math.abs(t.x - p.x) < 0.7 && Math.abs(t.y - p.y) < 0.7);
 
-export default function Island({ onEnter }: { onEnter: () => void }) {
+export default function Island({
+  onEnter,
+  data,
+  loading,
+  error,
+  refresh,
+}: {
+  onEnter: () => void;
+  data: MarketData | null;
+  loading: boolean;
+  error: string;
+  refresh: () => void;
+}) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const elapsed =
+    data?.lastRunAt == null
+      ? null
+      : Math.max(0, Math.floor(now / 1000 - data.lastRunAt));
+  const ago =
+    elapsed == null
+      ? "No verified runs yet"
+      : elapsed < 60
+        ? `${elapsed}s since the last run`
+        : elapsed < 3600
+          ? `${Math.floor(elapsed / 60)}m since the last run`
+          : elapsed < 86400
+            ? `${Math.floor(elapsed / 3600)}h since the last run`
+            : `${Math.floor(elapsed / 86400)}d since the last run`;
+  const figures: Record<string, { main: string; details: string }> = data
+    ? {
+        jobs: {
+          main: `${data.buildsShipped} runs`,
+          details: `${data.buildsShipped} verified runs. ${ago}.`,
+        },
+        pool: {
+          main: `${data.livePools} live pools`,
+          details: `${data.livePools} live pools. ${data.imdInPools === null ? "Pool data unavailable · Retry" : `${formatAmount(data.imdInPools)} IMD held in Keel pools (locked liquidity and position fees).`}`,
+        },
+        fees: {
+          main: `${formatAmount(data.fees.total)} IMD`,
+          details: `${formatAmount(data.fees.total)} IMD in total fees. Team ${formatAmount(data.fees.team)} · Creators ${formatAmount(data.fees.creators)} · Baskets ${formatAmount(data.fees.baskets)} IMD.`,
+        },
+        basket: {
+          main: `${formatAmount(data.imdInBaskets)} IMD`,
+          details: `${formatAmount(data.imdInBaskets)} IMD in baskets now. ${formatAmount(data.repaid)} IMD repaid to builders.`,
+        },
+        hq: {
+          main: data.paused ? "Launches paused" : "Launches open",
+          details: `${data.paused ? "Launches paused" : "Launches open"}. ${data.launches} total launches.`,
+        },
+      }
+    : {};
+  const unavailable = (id: StopId) =>
+    !!error || (id === "pool" && !!data && data.imdInPools === null);
+  const summary = (id: StopId, detail = false) =>
+    loading
+      ? "Reading Ethereum…"
+      : unavailable(id)
+        ? "Data unavailable · Retry"
+        : data
+          ? detail
+            ? figures[id]?.details
+            : figures[id]?.main
+          : "Reading Ethereum…";
+  const pages = (stop: Stop) =>
+    stop.pages.length + (stop.id === "classified" ? 0 : 1);
+  const line = (stop: Stop, page: number) =>
+    stop.id === "classified"
+      ? stop.pages[page]
+      : page === 0
+        ? summary(stop.id, true)
+        : stop.pages[page - 1];
   const [mobile, setMobile] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -151,6 +228,7 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
   const routeRef = useRef<Point[]>([]);
   const destinationRef = useRef<Stop | null>(null);
   const playerRef = useRef(player);
+  const sceneRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLButtonElement>(null);
   const tourRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -189,7 +267,7 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
     setDialog({ stop, page: 0 });
     if (stop.id === "hq")
       setVisited((previous) => new Set([...previous, stop.id]));
-    setAnnouncement(`${stop.title}. ${stop.pages[0]}`);
+    setAnnouncement(`${stop.title}. Reading its Ethereum figures.`);
     routeRef.current = [];
     destinationRef.current = null;
   }, []);
@@ -217,7 +295,7 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
     [dialog, menu],
   );
 
-  const advance = useCallback(() => {
+  const advance = () => {
     if (menu) return;
     if (!dialog) {
       if (nearest) openStop(nearest);
@@ -227,9 +305,9 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
       return;
     }
     const { stop, page } = dialog;
-    if (page < stop.pages.length - 1) {
+    if (page < pages(stop) - 1) {
       setDialog({ stop, page: page + 1 });
-      setAnnouncement(`${stop.title}. ${stop.pages[page + 1]}`);
+      setAnnouncement(`${stop.title}. ${line(stop, page + 1)}`);
     } else {
       if (stop.id !== "classified")
         setVisited((previous) => new Set([...previous, stop.id]));
@@ -242,7 +320,7 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
             : `${stop.title} visited.`,
         );
     }
-  }, [dialog, nearest, menu, onEnter, openStop, player, closeDialog]);
+  };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -279,7 +357,10 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
       }
       if (
         (key === "enter" || key === " ") &&
-        (dialog || !target.closest("button,a,summary"))
+        !menu &&
+        (dialog ||
+          target.closest(".island-scene,.island-dpad,.island-action-wrap") ||
+          !target.closest("button,a,summary"))
       ) {
         event.preventDefault();
         advance();
@@ -355,10 +436,13 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
     if (dialog) dialogRef.current?.focus();
   }, [menu, !!dialog]);
 
-  const view = mobile ? { w: 900, h: 1060 } : { w: 1200, h: 850 };
+  const view = mobile ? { w: 760, h: 1000 } : { w: 1200, h: 850 };
   const project = (p: Point): Point =>
     mobile
-      ? { x: 120 + p.x * 38, y: 250 + p.y * 43 }
+      ? {
+          x: p.x > 15 ? 650 + (p.x - 15) * 20 : 80 + p.x * 38,
+          y: 230 + p.y * 43,
+        }
       : { x: 250 + p.x * 50 - p.y * 10, y: 280 + p.y * 27 + p.x * 2 };
   const polygon = (points: Point[]) =>
     points
@@ -380,11 +464,14 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
   const scale = mobile ? 1.6 : 1;
   const playerPosition = project(player);
   const sprites: { key: string; depth: number; node: React.ReactNode }[] = [];
-  TREES.forEach((tree, i) => {
+  TREES.filter(
+    (tree) =>
+      !mobile || tree.y < 2 || ((tree.x < 1 || tree.x > 14) && tree.y < 10),
+  ).forEach((tree, i) => {
     const p = project(tree);
     sprites.push({
       key: `tree${i}`,
-      depth: p.y,
+      depth: -1000 + p.y,
       node: (
         <use
           href="#island-tree"
@@ -399,7 +486,7 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
     const p = project(stop);
     sprites.push({
       key: stop.id,
-      depth: p.y,
+      depth: 1000 + p.y,
       node: (
         <g
           transform={`translate(${p.x} ${p.y}) scale(${stop.id === "hq" ? (mobile ? 1.6 : 1) : scale})`}
@@ -471,7 +558,7 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
   });
   sprites.push({
     key: "player",
-    depth: playerPosition.y + 1,
+    depth: 1000 + playerPosition.y + 1,
     node: (
       <g
         className={walking ? "island-player is-walking" : "island-player"}
@@ -600,6 +687,10 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
       </div>
 
       <div
+        ref={sceneRef}
+        tabIndex={0}
+        role="group"
+        aria-label="Island scene. Arrow keys to walk; Enter or Space to talk."
         className="island-scene"
         style={{ "--scene-ratio": `${view.w} / ${view.h}` } as CSSProperties}
       >
@@ -973,7 +1064,9 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
             })}
           </g>
           {sprites.map((sprite) => (
-            <g key={sprite.key}>{sprite.node}</g>
+            <g key={sprite.key} data-sprite={sprite.key}>
+              {sprite.node}
+            </g>
           ))}
           <g className="island-falling-leaves">
             {Array.from({ length: 13 }, (_, i) => (
@@ -1010,34 +1103,52 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
                   ? 122
                   : 91);
           return (
-            <button
-              key={stop.id}
-              type="button"
-              className={`island-stop ${visited.has(stop.id) ? "is-visited" : ""} ${isHq ? "is-hq" : ""} ${stop.id === "classified" ? "is-classified" : ""}`}
-              style={{
-                left: `${(p.x / view.w) * 100}%`,
-                top: `${(sy / view.h) * 100}%`,
-              }}
-              aria-label={
-                stop.id === "classified"
-                  ? "[ CLASSIFIED ]"
-                  : `${stop.number} ${stop.title}${visited.has(stop.id) ? ", visited" : ""}. Walk here and talk.`
-              }
-              onClick={() => goTo(stop)}
-            >
-              {stop.id === "classified" ? (
-                "?"
-              ) : (
-                <>
-                  <span>{stop.number}</span> {stop.title}
-                  {visited.has(stop.id) && (
-                    <span className="island-visit-check" aria-hidden="true">
-                      ✓
-                    </span>
-                  )}
-                </>
+            <div key={stop.id}>
+              {stop.id !== "classified" && (
+                <button
+                  type="button"
+                  className={`island-sprite-target ${nearest?.id === stop.id ? "is-near" : ""}`}
+                  style={{
+                    left: `${(p.x / view.w) * 100}%`,
+                    top: `${((p.y - (isHq ? 60 : 28) * scale) / view.h) * 100}%`,
+                    width: `${(((isHq ? 140 : 94) * scale) / view.w) * 100}%`,
+                    height: `${(((isHq ? 125 : 78) * scale) / view.h) * 100}%`,
+                  }}
+                  aria-label={`Talk to ${stop.title} ${isHq ? "headquarters" : "robot"}`}
+                  onClick={() => goTo(stop)}
+                />
               )}
-            </button>
+              <button
+                type="button"
+                className={`island-stop ${nearest?.id === stop.id ? "is-near" : ""} ${visited.has(stop.id) ? "is-visited" : ""} ${isHq ? "is-hq" : ""} ${stop.id === "classified" ? "is-classified" : ""}`}
+                style={{
+                  left: `${(p.x / view.w) * 100}%`,
+                  top: `${(sy / view.h) * 100}%`,
+                }}
+                aria-label={
+                  stop.id === "classified"
+                    ? "[ CLASSIFIED ]"
+                    : `${stop.number} ${stop.title}${visited.has(stop.id) ? ", visited" : ""}. Walk here and talk.`
+                }
+                onClick={() => goTo(stop)}
+              >
+                {stop.id === "classified" ? (
+                  "?"
+                ) : (
+                  <>
+                    <span className="island-sign-title">
+                      <span>{stop.number}</span> {stop.title}
+                      {visited.has(stop.id) && (
+                        <span aria-hidden="true"> ✓</span>
+                      )}
+                    </span>
+                    <span className="island-sign-figure">
+                      {summary(stop.id)}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
           );
         })}
       </div>
@@ -1046,7 +1157,7 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
         <span className="island-coordinate">EST. ON ETHEREUM</span>
         <p>
           {nearest
-            ? `Press A to talk to ${nearest.title}.`
+            ? `Press Enter or A to talk to ${nearest.title}`
             : "Four stalls. One headquarters. Your next chapter."}
         </p>
       </div>
@@ -1059,7 +1170,11 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
           type="button"
           aria-label="Move north"
           className="up"
-          onClick={() => move(0, -1)}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => {
+            move(0, -1);
+            sceneRef.current?.focus({ preventScroll: true });
+          }}
         >
           ↑
         </button>
@@ -1067,7 +1182,11 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
           type="button"
           aria-label="Move west"
           className="left"
-          onClick={() => move(-1, 0)}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => {
+            move(-1, 0);
+            sceneRef.current?.focus({ preventScroll: true });
+          }}
         >
           ←
         </button>
@@ -1076,7 +1195,11 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
           type="button"
           aria-label="Move east"
           className="right"
-          onClick={() => move(1, 0)}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => {
+            move(1, 0);
+            sceneRef.current?.focus({ preventScroll: true });
+          }}
         >
           →
         </button>
@@ -1084,7 +1207,11 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
           type="button"
           aria-label="Move south"
           className="down"
-          onClick={() => move(0, 1)}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => {
+            move(0, 1);
+            sceneRef.current?.focus({ preventScroll: true });
+          }}
         >
           ↓
         </button>
@@ -1117,7 +1244,7 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
           <div className="island-dialog-top">
             <strong>{dialog.stop.title}</strong>
             <span>
-              {dialog.page + 1} / {dialog.stop.pages.length}
+              {dialog.page + 1} / {pages(dialog.stop)}
             </span>
             <button
               type="button"
@@ -1127,16 +1254,24 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
               ×
             </button>
           </div>
-          <p>{dialog.stop.pages[dialog.page]}</p>
+          <p aria-live="polite">{line(dialog.stop, dialog.page)}</p>
+          {dialog.page === 0 && unavailable(dialog.stop.id) && (
+            <button
+              className="island-retry"
+              onClick={refresh}
+              disabled={loading}
+            >
+              Retry Ethereum reads
+            </button>
+          )}
           <button
             type="button"
             className="island-dialog-next"
             onClick={advance}
           >
-            {dialog.stop.id === "hq" &&
-            dialog.page === dialog.stop.pages.length - 1
+            {dialog.stop.id === "hq" && dialog.page === pages(dialog.stop) - 1
               ? "Enter Keel →"
-              : dialog.page === dialog.stop.pages.length - 1
+              : dialog.page === pages(dialog.stop) - 1
                 ? "Done"
                 : "Next"}
             <kbd>A</kbd>
@@ -1170,6 +1305,7 @@ export default function Island({ onEnter }: { onEnter: () => void }) {
           </button>
         </div>
       )}
+      <span className="island-disclaimer">not operated by IMD</span>
       <div className="island-sr" role="status" aria-live="polite">
         {announcement}
       </div>

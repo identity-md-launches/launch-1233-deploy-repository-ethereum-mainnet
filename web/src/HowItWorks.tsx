@@ -38,8 +38,8 @@ export function HowItWorks() {
             creator can have one building token at a time.
           </p>
           <p>
-            The token supply seeds a TOKEN/IMD pool. Liquidity is
-            permanently locked.
+            The token supply seeds a TOKEN/IMD pool. Liquidity is permanently
+            locked.
           </p>
         </article>
         <article className="how-card card">
@@ -97,9 +97,8 @@ export function HowItWorks() {
           <span className="eyebrow">05 / CLAIM</span>
           <h2>Hold through the notice.</h2>
           <p>
-            Your claim uses the smaller of your balances at the two snapshots:
-            just before the close was announced, and just before the close.
-            Selling or transferring during the notice gives up that share.
+            Your claim uses the lower of your balances at the notice and at
+            close. Both snapshots use the preceding block.
           </p>
           <p>
             Buying after the notice brings no claim rights. Transferring after

@@ -1,7 +1,34 @@
+import { safeUrl } from "./chain/utils";
 import { useEffect, useState, type ReactNode } from "react";
 
 export function Icon({ name, size = 18 }: { name: string; size?: number }) {
   const paths: Record<string, ReactNode> = {
+    website: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <ellipse cx="12" cy="12" rx="4" ry="9" />
+        <path d="M3 12h18" />
+      </>
+    ),
+    x: (
+      <>
+        <path d="M4 4h5l11 16h-5L4 4ZM20 4l-7 8M4 20l7-8" />
+      </>
+    ),
+    telegram: <path d="m3 11 18-7-4 16-6-5-4 3 1-6 9-5-6 8-4-3-4-1Z" />,
+    upload: (
+      <>
+        <path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5" />
+      </>
+    ),
+    link: (
+      <>
+        <path
+          d="m10 13 4-4M8 15l-2 2a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m4 2 2-2a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0"
+          transform="translate(1 0)"
+        />
+      </>
+    ),
     arrow: (
       <>
         <path d="M5 12h14m-5-5 5 5-5 5" />
@@ -97,26 +124,29 @@ export function Avatar({
   image,
   symbol,
   size = "",
+  localPreview = false,
 }: {
   image?: string;
   symbol: string;
   size?: string;
+  localPreview?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [image]);
-  const safe = image && /^https:\/\//i.test(image);
+  const safe =
+    localPreview && image?.startsWith("blob:") ? image : safeUrl(image);
   return (
     <span className={`avatar ${size}`} aria-hidden="true">
       {safe && !failed ? (
         <img
-          src={image}
+          src={safe}
           alt=""
           onError={() => setFailed(true)}
           loading="lazy"
           referrerPolicy="no-referrer"
         />
       ) : (
-        <span>{symbol.slice(0, 1).toUpperCase()}</span>
+        <span>{symbol.slice(0, 1).toUpperCase() || "K"}</span>
       )}
     </span>
   );

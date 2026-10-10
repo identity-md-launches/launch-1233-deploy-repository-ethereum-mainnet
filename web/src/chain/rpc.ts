@@ -45,8 +45,16 @@ export async function rpc<T>(
         body: JSON.stringify({ jsonrpc: "2.0", id: ++nextId, method, params }),
         signal: controller.signal,
       });
-      if (!response.ok) throw new Error(`RPC HTTP ${response.status}`);
-      const body = (await response.json()) as RpcEnvelope<T>;
+      let body: RpcEnvelope<T>;
+      try {
+        body = (await response.json()) as RpcEnvelope<T>;
+      } catch {
+        throw new Error(`RPC HTTP ${response.status}: unreadable response`);
+      }
+      // Some providers report log-range limits with HTTP 400. Preserve their
+      // message so scanLogs can shrink the window instead of failing the page.
+      if (!response.ok)
+        throw new Error(body.error?.message || `RPC HTTP ${response.status}`);
       if (body.error) {
         // Contract reverts are valid responses, not an unavailable endpoint.
         if (

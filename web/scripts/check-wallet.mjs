@@ -70,6 +70,8 @@ const walletAddress = getAddress(A.KeelVault); // Existing address used locally;
 const mockBlock = `0x${(config.deploymentBlock + 1).toString(16)}`;
 const blockHash = id("local-wallet-test-block");
 let allowance = 0n;
+let balance = parseUnits("100");
+let creatorBps = 3700;
 let paused = false;
 let claimable = 5n;
 let rejectAccounts = false;
@@ -106,28 +108,57 @@ function localCall(transaction) {
       data: abi.encodeErrorResult(errorName),
     };
   }
+  if (parsed.name === "project")
+    return abi.encodeFunctionResult(parsed.name, [
+      {
+        creator: walletAddress,
+        phase: 0,
+        creatorActive: true,
+        creatorBps,
+        launchedAt: 1,
+        closeNotice: 0,
+        basket: 0n,
+        creatorAccrued: 5n,
+        snapshotBlock: 0,
+        closeBlock: 0,
+        poolAtClose: 0n,
+        circulating: 0n,
+        totalClaimed: 0n,
+        jobHash: id("local job"),
+        projectHash: id("local project"),
+      },
+    ]);
+  if (parsed.name === "lowerCreatorShare")
+    return abi.encodeFunctionResult(parsed.name, []);
   const value =
-    parsed.name === "hook"
-      ? A.KeelHook
-      : parsed.name === "vault"
-        ? A.KeelVault
-        : parsed.name === "tokenImplementation"
-          ? A.KeelToken
-          : parsed.name === "factory"
-            ? A.KeelFactory
-            : parsed.name === "paused"
-              ? paused
-              : parsed.name === "allowance"
-                ? allowance
-                : parsed.name === "approve"
-                  ? true
-                  : parsed.name === "swapExactInput"
-                    ? parseUnits("4")
-                    : parsed.name === "launch"
-                      ? A.KeelToken
-                      : parsed.name === "claimable" || parsed.name === "claim"
-                        ? claimable
-                        : undefined;
+    parsed.name === "balanceOf"
+      ? balance
+      : parsed.name === "symbol"
+        ? "CHECK"
+        : parsed.name === "claimCreator"
+          ? 5n
+          : parsed.name === "hook"
+            ? A.KeelHook
+            : parsed.name === "vault"
+              ? A.KeelVault
+              : parsed.name === "tokenImplementation"
+                ? A.KeelToken
+                : parsed.name === "factory"
+                  ? A.KeelFactory
+                  : parsed.name === "paused"
+                    ? paused
+                    : parsed.name === "allowance"
+                      ? allowance
+                      : parsed.name === "approve"
+                        ? true
+                        : parsed.name === "swapExactInput"
+                          ? parseUnits("4")
+                          : parsed.name === "launch"
+                            ? A.KeelToken
+                            : parsed.name === "claimable" ||
+                                parsed.name === "claim"
+                              ? claimable
+                              : undefined;
   assert.notEqual(value, undefined, `Unexpected view method ${parsed.name}`);
   return abi.encodeFunctionResult(parsed.name, [value]);
 }
@@ -228,6 +259,8 @@ globalThis.ethereum = {
 let passed = 0;
 function reset() {
   allowance = 0n;
+  balance = parseUnits("100");
+  creatorBps = 3700;
   paused = false;
   claimable = 5n;
   rejectAccounts = false;
@@ -257,7 +290,7 @@ const launch = {
   jobRef: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
   image: "https://example.com/test.png",
   description: "Local fixture only.",
-  links: [],
+  links: {},
   creatorPercent: 37,
   permit: {
     projectRef: "11111111-2222-3333-4444-555555555555",
@@ -269,6 +302,7 @@ const launch = {
 
 try {
   await chain.verifyDeployment(true);
+  await chain.connectWallet(chain.getWalletChoices()[0]);
   await test("Buy approves exactly the input, then submits protected router calldata", async () => {
     const statuses = [];
     const hash = await chain.executeTrade(trade, (message) =>
@@ -418,7 +452,7 @@ try {
     assert.deepEqual(JSON.parse(tx.args[8]), {
       description: launch.description,
       image: launch.image,
-      links: [],
+      links: {},
     });
   });
   await test("Invalid launch signature stops at simulation without a transaction", async () => {
@@ -465,6 +499,58 @@ try {
       },
     );
     assert.ok(!statuses.includes("Claim confirmed."));
+  });
+  await test("Insufficient IMD and token balances block approve and swap", async () => {
+    balance = 0n;
+    for (const side of ["buy", "sell"]) {
+      await assert.rejects(
+        () => chain.executeTrade({ ...trade, side }),
+        new RegExp(side === "buy" ? "Not enough IMD" : "Not enough CHECK"),
+      );
+    }
+    assert.equal(accepted.length, 0);
+    assert.ok(!calls.some((call) => call.name === "approve"));
+  });
+  await test("Creator claim and lower share simulate before sending", async () => {
+    await chain.claimCreator(A.KeelToken);
+    await chain.lowerCreatorShare(A.KeelToken, 2000);
+    assert.deepEqual(
+      accepted.map((tx) => tx.name),
+      ["claimCreator", "lowerCreatorShare"],
+    );
+    assert.equal(accepted[1].args[1], 2000n);
+    for (const tx of accepted)
+      assert.ok(
+        calls.findIndex((call) => call.name === tx.name) <
+          calls.findIndex(
+            (call) =>
+              call.method === "eth_sendTransaction" &&
+              call.params[0].data === tx.data,
+          ),
+      );
+  });
+  await test("Equal, higher and invalid creator shares are rejected before simulation", async () => {
+    for (const share of [3700, 3701, -1, 2.5, NaN])
+      await assert.rejects(
+        () => chain.lowerCreatorShare(A.KeelToken, share),
+        /below your current/,
+      );
+    assert.equal(accepted.length, 0);
+    assert.ok(!calls.some((call) => call.name === "lowerCreatorShare"));
+  });
+  await test("The selected provider handles writes even when window.ethereum changes", async () => {
+    const original = globalThis.ethereum;
+    globalThis.ethereum = {
+      request: () => {
+        throw new Error("Wrong wallet used");
+      },
+    };
+    try {
+      await chain.claimCreator(A.KeelToken);
+      assert.equal(accepted.length, 1);
+    } finally {
+      globalThis.ethereum = original;
+    }
   });
   await test("A failed deployment recheck clears trust and prevents wallet access", async () => {
     corruptCode = true;

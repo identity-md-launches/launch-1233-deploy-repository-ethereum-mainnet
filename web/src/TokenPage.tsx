@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { formatUnits, id } from "ethers";
-import { claimToken, executeTrade, getHolderState, quoteTrade } from "./chain";
+import { formatUnits, id, parseUnits } from "ethers";
+import {
+  claimToken,
+  claimCreator,
+  lowerCreatorShare,
+  executeTrade,
+  getHolderState,
+  quoteTrade,
+  linkLabels,
+} from "./chain";
 import type {
   HolderState,
   Run,
@@ -128,9 +136,7 @@ export function TokenPage(props: PageProps & { tokenAddress: string }) {
         <div className="token-current-price">
           <span className="eyebrow">PRICE IN IMD</span>
           <strong className="mono">{number(t.priceImd, 8)}</strong>
-          <span className="muted small">
-            Market cap {number(t.marketCapImd, 2)} IMD
-          </span>
+          <span className="muted small">FDV {number(t.fdvImd, 2)} IMD</span>
         </div>
       </div>
       {error && (
@@ -160,7 +166,13 @@ export function TokenPage(props: PageProps & { tokenAddress: string }) {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {link.label} <Icon name="external" size={13} />
+                  <Icon
+                    name={link.label in linkLabels ? link.label : "website"}
+                    size={16}
+                  />{" "}
+                  {linkLabels[link.label as keyof typeof linkLabels] ||
+                    link.label}{" "}
+                  <Icon name="external" size={13} />
                 </a>
               ))}
             </div>
@@ -255,7 +267,8 @@ export function TokenPage(props: PageProps & { tokenAddress: string }) {
                 <div className="notice">
                   <Icon name="info" />
                   <span>
-                    Selling during the notice gives up your basket share.
+                    Your claim uses the lower of your balances at the notice and
+                    at close.
                   </span>
                 </div>
               </>
@@ -323,7 +336,20 @@ export function TokenPage(props: PageProps & { tokenAddress: string }) {
           </section>
         </div>
         <aside className="trade-aside">
-          <Trade token={t} holder={holder} {...props} />
+          <Trade
+            key={t.address}
+            token={t}
+            holder={holder}
+            buyRequested={props.tokenAddress.includes("?buy")}
+            {...props}
+          />
+          {address?.toLowerCase() === t.creator.toLowerCase() && (
+            <CreatorPanel
+              key={`${t.address}-${address}`}
+              token={t}
+              {...props}
+            />
+          )}
           <section className="card fee-card">
             <div className="panel-heading">
               <h2>Trade fee</h2>
@@ -386,7 +412,12 @@ function Trade({
   data,
   error,
   refresh,
-}: PageProps & { token: Token; holder: HolderState | null }) {
+  buyRequested,
+}: PageProps & {
+  token: Token;
+  holder: HolderState | null;
+  buyRequested: boolean;
+}) {
   const [side, setSide] = useState<TradeSide>("buy");
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState("1");
@@ -396,29 +427,50 @@ function Trade({
   const [deadline, setDeadline] = useState(0);
   const [busy, setBusy] = useState(false);
   const [tradeError, setTradeError] = useState("");
+  const [balanceRejected, setBalanceRejected] = useState(false);
   const [status, setStatus] = useState("");
   const [hash, setHash] = useState("");
   const [clock, setClock] = useState(Date.now());
+  const amountInput = useRef<HTMLInputElement>(null);
+  const card = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!buyRequested) return;
+    setSide("buy");
+    const frame = requestAnimationFrame(() => {
+      card.current?.scrollIntoView({ behavior: "instant", block: "start" });
+      amountInput.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [buyRequested, token.address]);
   const generation = useRef(0);
   useEffect(() => {
     generation.current++;
     setQuote(null);
+    setBalanceRejected(false);
     setMinimum("");
     setTradeError("");
     setHash("");
     setStatus("");
-  }, [side, amount, slippage, minutes, token.address]);
+  }, [side, amount, slippage, minutes, token.address, address]);
   useEffect(() => {
     const tick = setInterval(() => setClock(Date.now()), 1000);
     return () => clearInterval(tick);
   }, []);
+  useEffect(() => setBalanceRejected(false), [holder]);
   const expired =
     !!quote && (clock / 1000 >= deadline || clock - quote.quotedAt > 60000);
   const inputSymbol = side === "buy" ? "IMD" : token.symbol;
   const outputSymbol = side === "buy" ? token.symbol : "IMD";
+  let insufficient = balanceRejected;
+  if (holder && /^\d+(\.\d{1,18})?$/.test(amount)) {
+    insufficient ||=
+      parseUnits(amount, 18) >
+      (side === "buy" ? holder.imdBalance : holder.tokenBalance);
+  }
   async function submit(e: FormEvent) {
     e.preventDefault();
     setTradeError("");
+    if (insufficient || (address && !holder)) return;
     if (!quote || expired) {
       setBusy(true);
       const request = ++generation.current;
@@ -461,14 +513,19 @@ function Trade({
       setQuote(null);
       refresh();
     } catch (err) {
-      setTradeError(errorMessage(err));
+      const message = errorMessage(err);
+      setTradeError(message);
+      if (message.startsWith("Not enough ")) {
+        setBalanceRejected(true);
+        refresh();
+      }
       setStatus("");
     } finally {
       setBusy(false);
     }
   }
   return (
-    <section className="card trade-card" id="trade">
+    <section className="card trade-card" id="trade" ref={card}>
       <h2 className="sr-only">Trade {token.symbol}</h2>
       <form onSubmit={submit}>
         <div className="trade-tabs" role="group" aria-label="Trade direction">
@@ -485,9 +542,20 @@ function Trade({
             </button>
           ))}
         </div>
+        {side === "buy" &&
+          token.closeNotice > 0 &&
+          token.status !== "closed" && (
+            <div className="notice buy-notice">
+              <Icon name="info" />
+              <span>
+                Tokens bought now do not count toward the basket claim.
+              </span>
+            </div>
+          )}
         <label className="trade-amount-label">
           You pay <span className="mono">{inputSymbol}</span>
           <input
+            ref={amountInput}
             name="amount"
             type="text"
             inputMode="decimal"
@@ -497,7 +565,7 @@ function Trade({
             required
             disabled={busy}
             autoComplete="off"
-            placeholder="0"
+            placeholder="Enter amount"
           />
         </label>
         <div className="balance-row">
@@ -601,6 +669,11 @@ function Trade({
             )}
           </div>
         )}
+        {insufficient && (
+          <p className="field-error" role="status">
+            Not enough {inputSymbol}
+          </p>
+        )}
         {tradeError && <ErrorNotice>{tradeError}</ErrorNotice>}
         <div className="transaction-status" role="status">
           {status}
@@ -612,19 +685,29 @@ function Trade({
         </div>
         <button
           className="button primary trade-submit"
-          disabled={busy || !data?.verified || !!error}
+          disabled={
+            busy ||
+            !data?.verified ||
+            !!error ||
+            insufficient ||
+            (!!address && !holder)
+          }
         >
           {busy
             ? "Waiting for confirmation…"
             : !data?.verified || error
               ? "Waiting for chain verification"
-              : !quote
-                ? "Get quote"
-                : expired
-                  ? "Refresh quote"
-                  : !address
-                    ? "Connect to trade"
-                    : `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`}
+              : insufficient
+                ? `Not enough ${inputSymbol}`
+                : address && !holder
+                  ? "Waiting for wallet balance"
+                  : !quote
+                    ? "Get quote"
+                    : expired
+                      ? "Refresh quote"
+                      : !address
+                        ? "Connect to trade"
+                        : `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`}
           <Icon name="arrow" />
         </button>
         <p className="field-hint">
@@ -636,6 +719,112 @@ function Trade({
     </section>
   );
 }
+function CreatorPanel({
+  token,
+  data,
+  error,
+  refresh,
+}: PageProps & { token: Token }) {
+  const [share, setShare] = useState("");
+  const [busy, setBusy] = useState("");
+  const [status, setStatus] = useState("");
+  const [failure, setFailure] = useState("");
+  const [hash, setHash] = useState("");
+  const bps = /^\d+(\.\d{1,2})?$/.test(share)
+    ? Number(parseUnits(share, 2))
+    : NaN;
+  const valid = Number.isSafeInteger(bps) && bps >= 0 && bps < token.creatorBps;
+  const disabled = !!busy || !data?.verified || !!error;
+  async function send(action: "claim" | "lower") {
+    if (disabled || (action === "lower" && !valid)) return;
+    setBusy(action);
+    setFailure("");
+    setHash("");
+    try {
+      const result =
+        action === "claim"
+          ? await claimCreator(token.address, setStatus)
+          : await lowerCreatorShare(token.address, bps, setStatus);
+      setHash(result);
+      if (action === "lower") setShare("");
+      refresh();
+    } catch (err) {
+      setFailure(errorMessage(err));
+      setStatus("");
+    } finally {
+      setBusy("");
+    }
+  }
+  return (
+    <section className="card creator-panel" aria-labelledby="creator-heading">
+      <div className="panel-heading">
+        <h2 id="creator-heading">Creator controls</h2>
+        <Icon name="wallet" />
+      </div>
+      <div className="claim-row">
+        <span>Your accrued IMD</span>
+        <strong className="mono">
+          {number(Number(formatUnits(token.creatorAccrued)), 6)} IMD
+        </strong>
+      </div>
+      <button
+        className="button"
+        disabled={disabled || token.creatorAccrued === 0n}
+        onClick={() => void send("claim")}
+      >
+        {busy === "claim" ? "Confirming claim…" : "Claim"}
+        <Icon name="arrow" />
+      </button>
+      {token.status !== "closed" && (
+        <form
+          className="creator-share-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void send("lower");
+          }}
+        >
+          <label htmlFor="lower-share">
+            Lower my share{" "}
+            <span className="muted small">
+              Current: {token.creatorBps / 100}%
+            </span>
+          </label>
+          <input
+            id="lower-share"
+            type="number"
+            min="0"
+            max={Math.max(0, (token.creatorBps - 1) / 100)}
+            step="0.01"
+            value={share}
+            disabled={disabled || token.creatorBps === 0}
+            aria-describedby="lower-share-help"
+            aria-invalid={!!share && !valid}
+            onChange={(event) => setShare(event.target.value)}
+            required
+          />
+          <p id="lower-share-help" className="field-hint">
+            {token.creatorBps === 0
+              ? "Your share is already at its minimum."
+              : "Choose a percentage below your current share. This cannot be undone. Pending fees use your current share before it changes."}
+          </p>
+          <button className="button" disabled={disabled || !valid}>
+            {busy === "lower" ? "Confirming change…" : "Lower my share"}
+          </button>
+        </form>
+      )}
+      {failure && <ErrorNotice>{failure}</ErrorNotice>}
+      <div className="transaction-status" role="status">
+        {status}
+        {hash && (
+          <a href={txUrl(hash)} target="_blank" rel="noreferrer">
+            View transaction <Icon name="external" size={13} />
+          </a>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function RunRow({ run }: { run: Run }) {
   const [job, setJob] = useState("");
   const valid =

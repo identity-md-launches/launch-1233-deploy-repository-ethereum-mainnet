@@ -3,11 +3,13 @@ import {
   Contract,
   Interface,
   formatUnits,
-  getAddress,
   id,
   isAddress,
   keccak256,
 } from "ethers";
+import { connectWallet, selectedWallet } from "./wallet";
+import { poolImdBalance } from "./pool";
+export * from "./wallet";
 import factoryAbi from "../abi/KeelFactory.json";
 import vaultAbi from "../abi/KeelVault.json";
 import routerAbi from "../abi/KeelRouter.json";
@@ -47,6 +49,8 @@ const interfaces = {
   token: new Interface(tokenAbi),
   hook: new Interface(hookAbi),
   state: new Interface([
+    "function getPositionInfo(bytes32 poolId,address owner,int24 tickLower,int24 tickUpper,bytes32 salt) view returns (uint128 liquidity,uint256 feeGrowthInside0LastX128,uint256 feeGrowthInside1LastX128)",
+    "function getFeeGrowthInside(bytes32 poolId,int24 tickLower,int24 tickUpper) view returns (uint256 feeGrowthInside0X128,uint256 feeGrowthInside1X128)",
     "function getSlot0(bytes32 poolId) view returns (uint160 sqrtPriceX96,int24 tick,uint24 protocolFee,uint24 lpFee)",
   ]),
 };
@@ -147,6 +151,7 @@ let cachedEvents: {
   block: number;
   launches: ChainLog[];
   runs: ChainLog[];
+  accounting: ChainLog[];
 } | null = null;
 const timestamps = new Map<string, number>();
 
@@ -172,7 +177,7 @@ async function loadEvents(block: number) {
   const from = prior
     ? Math.max(config.deploymentBlock, prior.block - 12)
     : config.deploymentBlock;
-  const [launches, runs] = await Promise.all([
+  const [launches, runs, accounting] = await Promise.all([
     scanLogs(
       A.KeelFactory,
       [interfaces.factory.getEvent("Launched")!.topicHash],
@@ -185,6 +190,16 @@ async function loadEvents(block: number) {
       from,
       block,
     ),
+    scanLogs(
+      A.KeelVault,
+      [
+        ["FeeAccrued", "Reimbursed", "Closed"].map(
+          (name) => interfaces.vault.getEvent(name)!.topicHash,
+        ),
+      ],
+      from,
+      block,
+    ),
   ]);
   const keep = (logs: ChainLog[]) =>
     logs.filter((log) => Number(log.blockNumber) < from);
@@ -192,6 +207,7 @@ async function loadEvents(block: number) {
     block,
     launches: [...keep(prior?.launches ?? []), ...launches],
     runs: [...keep(prior?.runs ?? []), ...runs],
+    accounting: [...keep(prior?.accounting ?? []), ...accounting],
   };
   cachedEvents = result;
   return result;
@@ -253,6 +269,7 @@ export async function loadMarket(): Promise<MarketData> {
     const p = project[0];
     let priceImd: number | null = null;
     let priceError: string | undefined;
+    let imdInPool: bigint | null = null;
     try {
       const slot = await read(
         A.StateView,
@@ -264,8 +281,38 @@ export async function loadMarket(): Promise<MarketData> {
       const sqrt = Number(slot[0]);
       if (sqrt === 0) throw new Error("Pool is not initialized.");
       priceImd = (sqrt / 2 ** 96) ** 2;
+      const lower = Number(event.args.lowerTick);
+      const [position, growth] = await Promise.all([
+        read(
+          A.StateView,
+          interfaces.state,
+          "getPositionInfo",
+          [
+            event.args.poolId,
+            A.KeelFactory,
+            lower,
+            887200,
+            "0x" + "00".repeat(32),
+          ],
+          blockNumber,
+        ),
+        read(
+          A.StateView,
+          interfaces.state,
+          "getFeeGrowthInside",
+          [event.args.poolId, lower, 887200],
+          blockNumber,
+        ),
+      ]);
+      imdInPool = poolImdBalance(
+        BigInt(slot[0]),
+        lower,
+        BigInt(position[0]),
+        BigInt(growth[1]),
+        BigInt(position[2]),
+      );
     } catch (error) {
-      priceError = errorMessage(error);
+      if (priceImd === null) priceError = errorMessage(error);
     }
     const tokenRuns = runs
       .filter((run) => run.token === address.toLowerCase())
@@ -290,9 +337,10 @@ export async function loadMarket(): Promise<MarketData> {
       basket: BigInt(p.basket),
       creatorAccrued: BigInt(p.creatorAccrued),
       priceImd,
+      imdInPool,
       priceError,
       supply: BigInt(supply[0]),
-      marketCapImd:
+      fdvImd:
         priceImd === null
           ? null
           : priceImd * Number(formatUnits(supply[0], 18)),
@@ -311,7 +359,29 @@ export async function loadMarket(): Promise<MarketData> {
     };
     return token;
   });
+  const fees = { total: 0n, team: 0n, creators: 0n, baskets: 0n };
+  let repaid = 0n;
+  let closed = 0;
+  for (const log of events.accounting) {
+    const event = interfaces.vault.parseLog(log)!;
+    if (event.name === "FeeAccrued") {
+      fees.total += BigInt(event.args.amount);
+      fees.team += BigInt(event.args.team);
+      fees.creators += BigInt(event.args.creator);
+      fees.baskets += BigInt(event.args.basket);
+    } else if (event.name === "Reimbursed") repaid += BigInt(event.args.amount);
+    else if (event.name === "Closed") closed++;
+  }
   return {
+    fees,
+    repaid,
+    lastRunAt: runs.length
+      ? runs.reduce((latest, { run }) => Math.max(latest, run.timestamp), 0)
+      : null,
+    livePools: events.launches.length - closed,
+    imdInPools: tokens.some((token) => token.imdInPool === null)
+      ? null
+      : tokens.reduce((sum, token) => sum + token.imdInPool!, 0n),
     tokens: tokens.sort((a, b) => b.launchBlock - a.launchBlock),
     paused: Boolean(pause[0]),
     blockNumber,
@@ -370,73 +440,13 @@ export async function quoteTrade(
   };
 }
 
-interface InjectedProvider {
-  request(args: { method: string; params?: unknown[] }): Promise<unknown>;
-  on?(event: string, listener: (...args: unknown[]) => void): void;
-  removeListener?(event: string, listener: (...args: unknown[]) => void): void;
-}
-
-function injected(): InjectedProvider | undefined {
-  return (globalThis as typeof globalThis & { ethereum?: InjectedProvider })
-    .ethereum;
-}
-
-export async function getWalletAddress(): Promise<string | null> {
-  const wallet = injected();
-  if (!wallet) return null;
-  const accounts = (await wallet.request({
-    method: "eth_accounts",
-  })) as string[];
-  return accounts[0] ? getAddress(accounts[0]) : null;
-}
-
-export async function connectWallet(): Promise<string> {
-  const wallet = injected();
-  if (!wallet)
-    throw new Error(
-      "Open this site in a wallet browser or install an Ethereum wallet.",
-    );
-  const accounts = (await wallet.request({
-    method: "eth_requestAccounts",
-  })) as string[];
-  if (!accounts[0]) throw new Error("No wallet account was selected.");
-  const chainId = Number(await wallet.request({ method: "eth_chainId" }));
-  if (chainId !== config.chainId)
-    await wallet.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0x1" }],
-    });
-  const confirmed = Number(await wallet.request({ method: "eth_chainId" }));
-  if (confirmed !== config.chainId)
-    throw new Error("Switch your wallet to Ethereum mainnet.");
-  return getAddress(accounts[0]);
-}
-
-export function subscribeWallet(
-  callback: (address: string | null) => void,
-): () => void {
-  const wallet = injected();
-  if (!wallet?.on) return () => {};
-  const update = () => {
-    void getWalletAddress()
-      .then(callback)
-      .catch(() => callback(null));
-  };
-  const disconnect = () => callback(null);
-  wallet.on("accountsChanged", update);
-  wallet.on("chainChanged", update);
-  wallet.on("disconnect", disconnect);
-  return () => {
-    wallet.removeListener?.("accountsChanged", update);
-    wallet.removeListener?.("chainChanged", update);
-    wallet.removeListener?.("disconnect", disconnect);
-  };
-}
-
 async function signer() {
   await verifyDeployment();
-  const address = await connectWallet();
-  const provider = new BrowserProvider(injected()!);
+  const choice = selectedWallet();
+  const address = await connectWallet(choice);
+  if (!choice || selectedWallet() !== choice)
+    throw new Error("Wallet connection changed. Connect again.");
+  const provider = new BrowserProvider(choice.provider);
   return { signer: await provider.getSigner(address), address };
 }
 
@@ -470,6 +480,11 @@ export async function executeTrade(
   status("Checking Ethereum deployment…");
   const wallet = await signer();
   const source = new Contract(tokenIn, tokenAbi, wallet.signer);
+  const balance = BigInt(await source.balanceOf(wallet.address));
+  if (balance < amountIn) {
+    const symbol = input.side === "buy" ? "IMD" : String(await source.symbol());
+    throw new Error(`Not enough ${symbol}`);
+  }
   const allowance = BigInt(
     await source.allowance(wallet.address, A.KeelRouter),
   );
@@ -529,4 +544,44 @@ export async function claimToken(
   await vault.claim.staticCall(token);
   status("Confirm the claim in your wallet.");
   return confirmed(await vault.claim(token), status, "Claim");
+}
+
+export async function claimCreator(
+  token: string,
+  status: TransactionStatus = () => {},
+): Promise<string> {
+  if (!isAddress(token)) throw new Error("Invalid token address.");
+  const wallet = await signer();
+  const vault = new Contract(A.KeelVault, vaultAbi, wallet.signer);
+  status("Simulating your creator claim…");
+  await vault.claimCreator.staticCall(token);
+  status("Confirm the creator claim in your wallet.");
+  return confirmed(await vault.claimCreator(token), status, "Creator claim");
+}
+
+export async function lowerCreatorShare(
+  token: string,
+  newBps: number,
+  status: TransactionStatus = () => {},
+): Promise<string> {
+  if (!isAddress(token)) throw new Error("Invalid token address.");
+  const wallet = await signer();
+  const vault = new Contract(A.KeelVault, vaultAbi, wallet.signer);
+  const project = await vault.project(token);
+  if (String(project.creator).toLowerCase() !== wallet.address.toLowerCase())
+    throw new Error("Connect the creator's wallet.");
+  if (
+    !Number.isInteger(newBps) ||
+    newBps < 0 ||
+    newBps >= Number(project.creatorBps)
+  )
+    throw new Error("Choose a share below your current share.");
+  status("Simulating your lower share…");
+  await vault.lowerCreatorShare.staticCall(token, newBps);
+  status("Confirm the lower share in your wallet. This cannot be undone.");
+  return confirmed(
+    await vault.lowerCreatorShare(token, newBps),
+    status,
+    "Lower share",
+  );
 }

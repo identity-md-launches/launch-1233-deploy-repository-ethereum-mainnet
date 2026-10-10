@@ -1,8 +1,15 @@
 import { useRef, useState, type FormEvent } from "react";
-import { launchToken, parseLaunchPermit, validateLaunchInput } from "./chain";
-import type { LaunchInput, LaunchPermit } from "./chain/types";
-import { txUrl } from "./config";
+import {
+  launchToken,
+  parseLaunchPermit,
+  validateLaunchInput,
+  linkError,
+  linkLabels,
+} from "./chain";
+import type { LaunchInput, LaunchPermit, LaunchLinks } from "./chain/types";
+import { config, txUrl } from "./config";
 import { errorMessage, type PageProps } from "./App";
+import { ImagePicker, uploadImage } from "./ImagePicker";
 import { Avatar, Chip, ErrorNotice, FeeSplit, Icon } from "./components";
 
 export function Launch({
@@ -18,7 +25,13 @@ export function Launch({
   const [job, setJob] = useState("");
   const [image, setImage] = useState("");
   const [description, setDescription] = useState("");
-  const [links, setLinks] = useState("");
+  const [links, setLinks] = useState<LaunchLinks>({});
+  const [linkTouched, setLinkTouched] = useState<
+    Partial<Record<keyof LaunchLinks, boolean>>
+  >({});
+  const [imageProcessing, setImageProcessing] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [share, setShare] = useState(40);
   const [permitText, setPermitText] = useState("");
   const [formError, setFormError] = useState("");
@@ -36,19 +49,32 @@ export function Launch({
     setFormError(message);
     setErrorField(field);
     if (field === "permit" && permitRef.current) permitRef.current.open = true;
-    (formRef.current?.elements.namedItem(field) as HTMLElement | null)?.focus();
+    requestAnimationFrame(() => {
+      const target = formRef.current?.elements.namedItem(
+        field,
+      ) as HTMLElement | null;
+      if (
+        (field === "image" || field === "imageFile") &&
+        (!target || target.classList.contains("sr-only"))
+      )
+        formRef.current
+          ?.querySelector<HTMLButtonElement>(".image-actions button")
+          ?.focus();
+      else target?.focus();
+    });
   };
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [hash, setHash] = useState("");
   const permitRef = useRef<HTMLDetailsElement>(null);
   const permitInput = useRef<HTMLTextAreaElement>(null);
-  const linkList = links
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const linkObject = Object.fromEntries(
+    Object.entries(links)
+      .filter(([, value]) => value?.trim())
+      .map(([key, value]) => [key, value!.trim()]),
+  );
   const metadataBytes = new TextEncoder().encode(
-    JSON.stringify({ image, description, links: linkList }),
+    JSON.stringify({ image, description, links: linkObject }),
   ).length;
   let permit: LaunchPermit | null = null;
   try {
@@ -62,13 +88,25 @@ export function Launch({
     event.preventDefault();
     setFormError("");
     setHash("");
-    if (!available) return;
+    if (!available || imageProcessing) return;
     setErrorField("");
     if (metadataBytes > 1024) {
       invalid(
         "Shorten the description or links. Metadata must fit in 1,024 bytes.",
         "description",
       );
+      return;
+    }
+    for (const key of Object.keys(linkLabels) as (keyof LaunchLinks)[]) {
+      const message = linkError(key, links[key] || "");
+      if (message) {
+        setLinkTouched((previous) => ({ ...previous, [key]: true }));
+        invalid(message, key);
+        return;
+      }
+    }
+    if (!image && !imageFile) {
+      invalid("Choose an image or use an image link.", "imageFile");
       return;
     }
     let launchInput: LaunchInput;
@@ -80,7 +118,7 @@ export function Launch({
         jobRef: job,
         image,
         description,
-        links: linkList,
+        links: linkObject,
         creatorPercent: share,
         permit: parsedPermit,
       };
@@ -88,7 +126,18 @@ export function Launch({
       invalid(errorMessage(e), "permit");
       return;
     }
+    if (!address) {
+      await connect();
+      return;
+    }
+    setBusy(true);
     try {
+      if (imageFile) {
+        setStatus("Uploading your image…");
+        launchInput.image = await uploadImage(imageFile);
+        setImage(launchInput.image);
+        setImageFile(null);
+      }
       validateLaunchInput(launchInput);
     } catch (e) {
       const message = errorMessage(e);
@@ -98,21 +147,16 @@ export function Launch({
           ? "ticker"
           : /job UUID/.test(message)
             ? "jobRef"
-            : /image URL/.test(message)
+            : /image|upload/i.test(message)
               ? "image"
-              : /Links/.test(message)
-                ? "links"
-                : /share/.test(message)
-                  ? "creatorShare"
-                  : "description";
+              : /share/.test(message)
+                ? "creatorShare"
+                : "description";
       invalid(message, field);
+      setBusy(false);
+      setStatus("");
       return;
     }
-    if (!address) {
-      await connect();
-      return;
-    }
-    setBusy(true);
     try {
       const result = await launchToken(launchInput, setStatus);
       setHash(result);
@@ -223,22 +267,18 @@ export function Launch({
               The lowercase UUID of your completed IMD job.
             </span>
           </label>
-          <label>
-            Image URL
-            <input
-              name="image"
-              {...fieldState("image", "image-hint")}
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              type="url"
-              pattern="https://.*"
-              required
-              autoComplete="url"
-            />
-            <span id="image-hint" className="field-hint">
-              A public HTTPS image. Stored in your launch event.
-            </span>
-          </label>
+          <ImagePicker
+            image={image}
+            preview={imagePreview}
+            symbol={symbol}
+            disabled={busy}
+            onProcessing={setImageProcessing}
+            onImage={setImage}
+            onFile={(file, preview) => {
+              setImageFile(file);
+              setImagePreview(preview);
+            }}
+          />
           <label>
             Description
             <textarea
@@ -251,24 +291,60 @@ export function Launch({
               maxLength={900}
             />
           </label>
-          <label>
-            Links <span className="optional">Optional</span>
-            <textarea
-              name="links"
-              {...fieldState("links", "links-hint")}
-              value={links}
-              onChange={(e) => setLinks(e.target.value)}
-              rows={2}
-              spellCheck={false}
-            />
-            <span id="links-hint" className="field-hint">
-              One web or IPFS link per line.
-            </span>
-          </label>
+          <div className="social-fields">
+            {(Object.keys(linkLabels) as (keyof LaunchLinks)[]).map((key) => {
+              const problem = linkTouched[key]
+                ? linkError(key, links[key] || "")
+                : "";
+              return (
+                <label key={key}>
+                  <span className="field-label-icon">
+                    <Icon name={key} size={17} />
+                    {linkLabels[key]} <span className="optional">Optional</span>
+                  </span>
+                  <input
+                    name={key}
+                    type="url"
+                    value={links[key] || ""}
+                    disabled={busy}
+                    autoComplete="url"
+                    spellCheck={false}
+                    aria-invalid={!!problem}
+                    aria-describedby={`${key}-hint`}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setLinks((previous) => ({ ...previous, [key]: value }));
+                      event.currentTarget.setCustomValidity(
+                        linkError(key, value),
+                      );
+                    }}
+                    onBlur={() =>
+                      setLinkTouched((previous) => ({
+                        ...previous,
+                        [key]: true,
+                      }))
+                    }
+                  />
+                  <span
+                    id={`${key}-hint`}
+                    className={problem ? "field-error" : "field-hint"}
+                  >
+                    {problem ||
+                      (key === "website"
+                        ? "HTTPS only"
+                        : key === "x"
+                          ? "HTTPS · x.com or twitter.com"
+                          : "HTTPS · t.me")}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
           <div
             className={`metadata-budget tiny mono ${metadataBytes > 1024 ? "budget-invalid" : ""}`}
           >
             {metadataBytes} / 1,024 metadata bytes
+            {imageFile ? " · Rechecked after upload" : ""}
           </div>
           <div className="form-divider" />
           <div className="form-section-heading">
@@ -379,17 +455,27 @@ export function Launch({
           <button
             type="submit"
             className="button primary launch-submit"
-            disabled={!available || busy}
+            disabled={
+              !available ||
+              busy ||
+              imageProcessing ||
+              metadataBytes > 1024 ||
+              (!!imageFile && !config.uploadUrl)
+            }
           >
-            {busy
-              ? "Confirming launch…"
-              : data?.paused
-                ? "Launches open soon"
-                : !available
-                  ? "Waiting for chain verification"
-                  : !address
-                    ? "Connect wallet to launch"
-                    : "Launch token"}
+            {imageProcessing
+              ? "Preparing image…"
+              : busy
+                ? "Confirming launch…"
+                : data?.paused
+                  ? "Launches open soon"
+                  : imageFile && !config.uploadUrl
+                    ? "Image upload opens with launches"
+                    : !available
+                      ? "Waiting for chain verification"
+                      : !address
+                        ? "Connect wallet to launch"
+                        : "Launch token"}
             <Icon name={data?.paused ? "lock" : "arrow"} />
           </button>
           <p className="field-hint launch-footnote">
@@ -404,7 +490,12 @@ export function Launch({
           <article className="card launch-preview">
             <div className="preview-art">
               <div className="preview-orbit" />
-              <Avatar image={image} symbol={symbol} size="avatar-large" />
+              <Avatar
+                image={imagePreview || image}
+                localPreview={!!imagePreview}
+                symbol={symbol}
+                size="avatar-large"
+              />
             </div>
             <div className="preview-card-content">
               <Chip>Preview</Chip>

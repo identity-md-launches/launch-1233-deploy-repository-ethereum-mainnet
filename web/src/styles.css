@@ -3040,3 +3040,202 @@ input[type="range"] {
     opacity: 0.1;
   }
 }
+
+/* Installed-wallet chooser, native modal focus and dismissal. */
+.wallet-dialog {
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100svh - 40px);
+  padding: 24px;
+  margin: auto;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-control);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.wallet-dialog::backdrop {
+  background: #000b;
+}
+.wallet-dialog .icon-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.wallet-connected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.wallet-connected .button {
+  width: 100%;
+}
+.wallet-list {
+  display: grid;
+  gap: 12px;
+}
+.wallet-choice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 72px;
+  padding: 14px;
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  text-align: left;
+}
+.wallet-choice:hover {
+  border-color: var(--text);
+}
+.wallet-choice > span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.wallet-choice small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.wallet-choice img {
+  flex: none;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.wallet-empty {
+  display: grid;
+  gap: 16px;
+}
+.wallet-empty p {
+  margin: 0;
+}
+.wallet-empty input {
+  min-width: 0;
+  width: 100%;
+}
+
+.image-field {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.image-field legend {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.image-drop {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border: 1px dashed var(--border-control);
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--bg);
+}
+.image-drop.is-dragging {
+  border-color: var(--text);
+  background: var(--surface-raised);
+}
+.image-drop > svg,
+.image-drop .avatar {
+  flex: none;
+}
+.image-drop-content {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.image-drop-content strong {
+  font-size: 14px;
+}
+.image-drop-content .field-hint {
+  margin: 0;
+}
+.image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-top: 10px;
+}
+.image-actions .button {
+  min-height: 44px;
+  font-size: 12px;
+  padding: 8px 14px;
+}
+.image-actions .text-button,
+.image-link-toggle {
+  min-height: 44px;
+}
+.image-link-toggle {
+  font-size: 12px;
+  margin-top: 4px;
+}
+.image-field > label {
+  margin-top: 12px;
+}
+.social-fields {
+  display: grid;
+  gap: 18px;
+}
+.field-label-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.field-error {
+  font-size: 13px;
+  color: var(--text);
+  margin-top: 6px;
+  line-height: 1.6;
+}
+.trade-card {
+  scroll-margin-top: 100px;
+}
+.buy-notice {
+  margin: 16px 0;
+  font-size: 13px;
+}
+.creator-panel {
+  padding: 24px;
+  margin-top: 24px;
+}
+.creator-panel .claim-row {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.creator-panel .button {
+  width: 100%;
+}
+.creator-share-form {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.creator-share-form label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.creator-share-form input {
+  width: 100%;
+}
+@media (max-width: 480px) {
+  .image-drop {
+    padding: 16px;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .image-drop .avatar {
+    width: 80px;
+    height: 80px;
+  }
+  .image-drop-content {
+    flex: 1 1 170px;
+  }
+  .wallet-dialog {
+    padding: 20px;
+  }
+}

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Island from "./Island";
+import { WalletChooser } from "./WalletChooser";
 import {
   loadMarket,
-  connectWallet,
+  discoverWallets,
   getWalletAddress,
   subscribeWallet,
 } from "./chain";
@@ -66,8 +67,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [address, setAddress] = useState<string | null>(null);
-  const [walletError, setWalletError] = useState("");
-  const [connecting, setConnecting] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
   const fetching = useRef(false);
   const content = useRef<HTMLElement>(null);
   const refresh = useCallback(async () => {
@@ -106,24 +106,16 @@ export default function App() {
     content.current?.focus({ preventScroll: true });
   }, [route]);
   useEffect(() => {
+    discoverWallets();
     void getWalletAddress()
       .then(setAddress)
       .catch(() => {});
     return subscribeWallet((nextAddress) => {
       setAddress(nextAddress);
-      setWalletError("");
     });
   }, []);
   async function connect() {
-    setWalletError("");
-    setConnecting(true);
-    try {
-      setAddress(await connectWallet());
-    } catch (e) {
-      setWalletError(errorMessage(e));
-    } finally {
-      setConnecting(false);
-    }
+    setWalletOpen(true);
   }
   const props: PageProps = { data, loading, error, refresh, address, connect };
   const island = route === "/" || route === "/island";
@@ -134,6 +126,10 @@ export default function App() {
   if (island)
     return (
       <Island
+        data={data}
+        loading={loading}
+        error={error}
+        refresh={refresh}
         onEnter={() => {
           window.location.hash = "/market";
         }}
@@ -185,29 +181,18 @@ export default function App() {
           <button
             className="button wallet-button"
             onClick={connect}
-            disabled={connecting}
             title={address || undefined}
           >
             <Icon name="wallet" />
-            {connecting
-              ? "Connecting…"
-              : address
-                ? shortAddress(address)
-                : "Connect"}
+            {address ? shortAddress(address) : "Connect"}
           </button>
         </div>
       </header>
-      {walletError && (
-        <div className="wallet-notice" role="alert">
-          <span>{walletError}</span>
-          <button
-            aria-label="Dismiss wallet message"
-            onClick={() => setWalletError("")}
-          >
-            <Icon name="close" />
-          </button>
-        </div>
-      )}
+      <WalletChooser
+        open={walletOpen}
+        close={() => setWalletOpen(false)}
+        address={address}
+      />
       <main
         id="main-content"
         ref={content}

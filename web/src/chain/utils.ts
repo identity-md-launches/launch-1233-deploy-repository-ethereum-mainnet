@@ -1,5 +1,12 @@
 import { formatUnits, parseUnits } from "ethers";
-import type { LaunchInput, LaunchPermit, Pulse, Run } from "./types";
+import { config } from "../config";
+import type {
+  LaunchLinks,
+  LaunchInput,
+  LaunchPermit,
+  Pulse,
+  Run,
+} from "./types";
 
 export const WEEK = 7 * 86400;
 export const MONTH = 30 * 86400;
@@ -46,12 +53,13 @@ export function safeUrl(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   try {
     const url = new URL(value);
-    if (url.protocol === "https:" || url.protocol === "http:") return url.href;
+    if (url.protocol === "https:" && !url.username && !url.password)
+      return url.href;
     if (
       url.protocol === "ipfs:" &&
       /^ipfs:\/\/[a-zA-Z0-9]+(?:\/[^\s]*)?$/.test(value)
     ) {
-      return `https://ipfs.io/ipfs/${value.slice(7)}`;
+      return `${config.ipfsGateway.replace(/\/?$/, "/")}${value.slice(7)}`;
     }
   } catch {
     /* Untrusted metadata is rendered as plain text only. */
@@ -72,7 +80,7 @@ export function parseMetadata(raw: string): {
         : [];
     return {
       description: typeof data.description === "string" ? data.description : "",
-      image: safeUrl(data.image),
+      image: safeUrl(data.image) ? String(data.image) : undefined,
       links: links.flatMap(([label, value]) => {
         const url = safeUrl(value);
         return url
@@ -143,15 +151,15 @@ export function launchArguments(
     input.creatorPercent > 80
   )
     throw new Error("Your share must be 0–80%.");
-  if (!safeUrl(input.image)) throw new Error("Enter a valid image URL.");
+  if (!safeUrl(input.image))
+    throw new Error("Choose an image or enter an HTTPS or IPFS image link.");
   if (!input.description.trim()) throw new Error("Add a short description.");
-  if (input.links.some((link) => !safeUrl(link)))
-    throw new Error("Links must use HTTP, HTTPS or IPFS.");
+  const links = cleanLaunchLinks(input.links);
   validatePermit(input.permit);
   const metadata = JSON.stringify({
     description: input.description,
     image: input.image,
-    links: input.links,
+    links,
   });
   if (byteLength(metadata) > 1024)
     throw new Error(
@@ -192,4 +200,40 @@ export function errorMessage(error: unknown): string {
     );
   }
   return typeof error === "string" ? error : "Request failed. Try again.";
+}
+
+export const linkLabels = {
+  website: "Website",
+  x: "X",
+  telegram: "Telegram",
+} as const;
+export function linkError(key: keyof LaunchLinks, value: string): string {
+  if (!value.trim()) return "";
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "https:" || url.username || url.password)
+      throw new Error();
+    const host = url.hostname.toLowerCase();
+    if (
+      key === "x" &&
+      !["x.com", "twitter.com", "www.x.com", "www.twitter.com"].includes(host)
+    )
+      return "Use an HTTPS link on x.com or twitter.com.";
+    if (key === "telegram" && host !== "t.me")
+      return "Use an HTTPS link on t.me.";
+    return "";
+  } catch {
+    return `${linkLabels[key]} must use a valid HTTPS link.`;
+  }
+}
+export function cleanLaunchLinks(links: LaunchLinks): LaunchLinks {
+  const result: LaunchLinks = {};
+  for (const key of Object.keys(linkLabels) as (keyof LaunchLinks)[]) {
+    const value = links[key]?.trim();
+    if (!value) continue;
+    const error = linkError(key, value);
+    if (error) throw new Error(error);
+    result[key] = value;
+  }
+  return result;
 }

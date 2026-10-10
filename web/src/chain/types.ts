@@ -38,7 +38,8 @@ export interface Token {
   basket: bigint;
   creatorAccrued: bigint;
   priceImd: number | null;
-  marketCapImd: number | null;
+  imdInPool: bigint | null;
+  fdvImd: number | null;
   priceError?: string;
   supply: bigint;
   pendingFees: bigint;
@@ -64,6 +65,11 @@ export interface MarketData {
   launches: number;
   buildsShipped: number;
   imdInBaskets: bigint;
+  livePools: number;
+  imdInPools: bigint | null;
+  fees: { total: bigint; team: bigint; creators: bigint; baskets: bigint };
+  repaid: bigint;
+  lastRunAt: number | null;
 }
 
 export interface HolderState {
@@ -86,7 +92,7 @@ export interface LaunchInput {
   jobRef: string;
   image: string;
   description: string;
-  links: string[];
+  links: LaunchLinks;
   creatorPercent: number;
   permit: LaunchPermit;
 }
@@ -110,3 +116,5 @@ export interface TradeInput {
 }
 
 export type TransactionStatus = (message: string) => void;
+
+export type LaunchLinks = Partial<Record<"website" | "x" | "telegram", string>>;

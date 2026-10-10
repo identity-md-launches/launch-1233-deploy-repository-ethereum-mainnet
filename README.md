@@ -1,6 +1,6 @@
 # Keel
 
-Ethereum mainnet launchpad contracts and a static Keel website. Each project has a permanently locked TOKEN/IMD Uniswap v4 position. A 1% IMD swap fee funds the team, creator and continued IMD work. The website reads Ethereum directly and uses an injected wallet for transactions. This website task did not change or deploy any contract.
+Ethereum mainnet launchpad contracts and a static Keel website. Each project has a permanently locked TOKEN/IMD Uniswap v4 position. A 1% IMD swap fee funds the team, creator and continued IMD work. The website reads Ethereum directly and uses the visitor’s chosen installed wallet for transactions. This website task did not change or deploy any contract.
 
 ## Website
 
@@ -8,7 +8,7 @@ The ready-to-publish site is in **[dist/](dist/)**. React/TypeScript source, its
 
 ### Install, preview and rebuild
 
-Use Node **22.12 or newer** and npm. This delivery was built with Node 26.11.1 and npm 12.2.0. From the repository root:
+Use Node **22.12 or newer** and npm. This delivery was built with **Node 24.21.0** and **npm 11.19.0**. From the repository root:
 
 ```sh
 npm --prefix web ci
@@ -23,7 +23,7 @@ Preview opens at `http://localhost:4173/`. For development, run `npm --prefix we
 python3 -m http.server 4173 --bind 127.0.0.1 --directory dist
 ```
 
-`build` runs `tsc --noEmit`, then Vite, replacing root `dist/`. Rebuild after source changes and include the entire export in the submission alongside `web/package.json` and `web/package-lock.json`. `base: './'`, relative asset references and hash navigation support IPFS gateway subpaths without rewrite rules. All site art, font files and font licenses are bundled locally. There are no environment variables, keys, backend services or runtime package downloads.
+`build` runs `tsc --noEmit`, then Vite, replacing root `dist/`. Rebuild after source changes and include the entire export in the submission alongside `web/package.json` and `web/package-lock.json`. `base: './'`, relative asset references and hash navigation support IPFS gateway subpaths without rewrite rules. All site art, font files and font licenses are bundled locally. There are no environment variables, keys, bundled backend services or runtime package downloads.
 
 Keep generated dependencies outside the submission. No ignore file was changed. After local checks, remove `web/node_modules` before collecting changed files; `npm ci` restores it. Do not include caches, browser binaries, temporary verification artifacts or npm archives. Browser/Foundry scaffolding in `test/scratch/` is disposable.
 
@@ -39,37 +39,89 @@ Use the resulting directory CID, pin it with your node or pinning service, and o
 
 ### Chain and wallet behavior
 
-[web/src/config.ts](web/src/config.ts) is the single frontend address/network configuration. It pins Ethereum chain 1, deployment block 26162060, both public RPC endpoints, the launch contracts, IMD, PoolManager and StateView. Reads retry the other endpoint with bounded timeouts. Launch/run event scans begin at the deployment block, use adaptive block windows and rewind 12 blocks on refresh. A loaded market uses one block for events, balances and pool state. Failed reads show an unavailable state, never fabricated zeros. Refresh runs every minute and is also available manually.
+[web/src/config.ts](web/src/config.ts) is the single frontend address/network configuration. It pins Ethereum chain 1, deployment block 26162060, both public RPC endpoints, the launch contracts, IMD, PoolManager and StateView. Reads retry the other endpoint with bounded timeouts. Launch/run/accounting event scans begin at the deployment block, use adaptive block windows and rewind 12 blocks on refresh. A loaded market uses one block for events, balances and pool state. Failed reads show an unavailable state, never fabricated zeros. Refresh runs every minute and is also available manually.
 
-The market is populated exclusively from `Launched`; builds from `RunVerified`; baskets and close terms from the vault; spot prices from the canonical pool's `sqrtPriceX96`. Market cap uses actual total supply. Hook fees awaiting distribution are shown separately. Quotes use KeelRouter and exact integer units. UI price/cap figures are spot estimates, distinct from transaction quotes.
+The market is populated exclusively from `Launched`; builds from `RunVerified`; baskets and close terms from the vault; spot prices from the canonical pool's `sqrtPriceX96`. FDV uses actual total supply. Hook fees awaiting distribution are shown separately. Quotes use KeelRouter and exact integer units. UI price/FDV figures are spot estimates, distinct from transaction quotes.
 
-Before wallet writes, the client verifies deployed runtime bytecode and immutable wiring against the pinned source. Wallets must be on Ethereum mainnet. Buy/sell use IMD and KeelRouter; approvals cover only the exact input when existing allowance is insufficient. The review shows an editable minimum output and absolute deadline. Quotes become stale after 60 seconds. Launches, approvals, swaps and claims are simulated before wallet submission and report receipt status.
+Connect opens an EIP-6963 chooser with each installed wallet’s name and icon; `window.ethereum` is used only when none announce. The last choice is remembered, and Disconnect clears the connection without forgetting that preference. A phone without an injected wallet gets the wallet-browser instruction and a Copy link action. Account reads, subscriptions and all writes use the chosen provider.
+
+Before wallet writes, the client verifies deployed runtime bytecode and immutable wiring against the pinned source. Wallets must be on Ethereum mainnet. Buy/sell use IMD and KeelRouter; approvals cover only the exact input when existing allowance is insufficient. The UI disables an amount above the wallet balance, and the write helper rechecks the balance before approval. The review shows an editable minimum output and absolute deadline. Quotes become stale after 60 seconds. Launches, approvals, swaps and claims are simulated before wallet submission and report receipt status.
+
+The island uses the same block snapshot as the market: verified-run count and last-run time; launches minus `Closed` for live pools; `FeeAccrued` totals and their emitted historical split; remaining baskets and `Reimbursed` totals; and the factory’s pause state. Pool IMD sums locked position principal plus its uncollected IMD fee growth at that block, including closed projects whose pools remain locked. This excludes protocol fees, hook fees and any PoolManager-wide balance; per-position rounding dust is not assigned to a project. Runs, pools, fees and repayments retain integer precision until display. A pool read failure is unavailable, never zero. Each stall opens with its figures before the existing guide text.
+
+Creator wallets have a Claim action for accrued creator IMD and a strict decrease-only share control. Both simulate through the vault before submission. FDV is spot price × actual total supply. A card’s Buy link scrolls to the trade card and focuses its amount field. Close-notice copy explains both snapshots and warns buyers that new purchases do not add basket rights.
 
 When `factory.paused()` is true, the launch form remains an editable preview and its launch button is disabled. A signed response can be pasted into **Launch permit** (`projectRef`, `startTick`, `deadline`, `signature`). No launch-gate endpoint was supplied, so no API endpoint or permit is invented. The UI validates the response and contract field limits before asking for a wallet.
+
+The launch form has separate optional Website, X and Telegram links. All require HTTPS, X allows x.com/twitter.com, and Telegram allows t.me. Metadata contains only the filled `links` object keys and remains limited to 1,024 UTF-8 bytes.
+
+Image picking and drag-and-drop accept PNG/JPG/WEBP/GIF up to 2 MiB, center-crop to 512×512 and encode WEBP locally. GIFs become still images. Both previews update before upload; Replace and Remove are available. `config.uploadUrl` is intentionally empty: no server is assumed. When configured, launching sends `POST` multipart field `file`, expects `{ "cid": "<IPFS CID>" }`, stores `ipfs://<cid>`, and rechecks metadata size after upload. A selected file cannot launch while the endpoint is empty. HTTPS/IPFS image links remain a secondary option. `config.ipfsGateway` defaults to `https://ipfs.io/ipfs/`; cards, token pages and previews use it with the chrome-letter fallback on failure. Configure the upload endpoint and its CORS policy before enabling uploads.
 
 `RunVerified` contains a **hash of the job UUID**, not the UUID itself. The run feed links the verification transaction and offers an original-job-ID input. It verifies the supplied UUID against the emitted hash before exposing the real `explorer.imd.fun/jobs/<uuid>` link. Arbitrary hashes cannot automatically resolve without additional published data. No nonexistent `/jobs/<hash>` links are fabricated.
 
 ### Validation and source pins
 
-The production build and independent typecheck passed. Browser validation inspected the actual export at a nested `/preview/` path on desktop and phone, checked primary interactions and RPC failure recovery, and ran accessibility scans. Transaction helpers were exercised with a local injected-wallet mock; no on-chain transaction was sent. At the observed live mainnet blocks the factory was paused, with no launches or verified runs.
-
-See [the consolidated review and actual results](docs/website/validation.md), [browser evidence](docs/website/validation-browser.md), [chain verification](web/chain-verification.md), and [DESIGN.md](DESIGN.md). Screenshots in `docs/website/` (also exported to `artifacts/`) show real live/empty states; synthetic token fixtures were confined to tests and never shipped as site data or screenshots.
-
-Repeat the deterministic chain and wallet checks after `npm ci`:
+Use `node web/scripts/check-chain.mjs` for deterministic chain/metadata checks and add `--live` for read-only RPC/code verification. Wallet simulation checks also need the existing contract build outputs:
 
 ```sh
-node web/scripts/check-chain.mjs
-# Optional live RPC/deployment check:
-node web/scripts/check-chain.mjs --live
-# Needed for ABI regeneration and the fully mocked wallet integration checks:
 forge build --out test/scratch/forge-out --cache-path test/scratch/forge-cache
 node web/scripts/generate-abis.mjs
 node web/scripts/check-wallet.mjs
 ```
 
-The generator recursively sorts ABI object keys, preserves array order, computes Keccak-256 and checks all four pinned ABI hashes and creation-code hashes. KeelHook is derived from the same source and its factory creation code. ABI JSON and immutable-masked runtime fingerprints are already included; normal frontend builds do not need Foundry.
+The ABI generator checks canonical Keccak hashes and creation-code hashes against the deployment pins. The committed ABIs and immutable-masked fingerprints are sufficient for a normal frontend build. No dependency or Solidity configuration changes are needed.
 
-Design review follows the pinned Better Interface guide (Jakub Krehel, MIT) and its Impeccable documentation guidance (Paul Bakaus, Apache-2.0). Attribution and both license texts are retained in [docs/BETTER_INTERFACE_LICENSE](docs/BETTER_INTERFACE_LICENSE). Font origins/licenses are in [web/public/fonts/](web/public/fonts/); bundled runtime library notices are in [web/public/THIRD_PARTY_LICENSES.txt](web/public/THIRD_PARTY_LICENSES.txt).
+The current delivery's actual checks and six-domain Better Interface review are recorded below. See [DESIGN.md](DESIGN.md) for implemented design tokens and components. Font origins/licenses are in [web/public/fonts/](web/public/fonts/); runtime notices are in [web/public/THIRD_PARTY_LICENSES.txt](web/public/THIRD_PARTY_LICENSES.txt).
+
+### Delivery checks and interface review
+
+Checked on 2026-10-10 using Node 24.21.0, npm 11.19.0, Vite 7.1.7 and the provided Firefox browser runtime. This is a worker-side check record, not an independent audit. No on-chain transactions were sent.
+
+| Check | Actual result |
+| --- | --- |
+| `npm --prefix web ci --cache /tmp/keel-npm-cache --no-audit --no-fund` | Passed; existing manifest and lockfile preserved. |
+| `npm --prefix web run typecheck` | Passed after final source changes. |
+| `npm --prefix web run build` | Passed; rebuilt root `dist/` with relative asset URLs. Vite reports one 588.27 kB JS chunk (190.74 kB gzip), above its advisory 500 kB threshold. |
+| `forge build --out test/scratch/forge-out --cache-path test/scratch/forge-cache` | Passed; existing Solidity/lint warnings, no Solidity or build-configuration edits. Used solely to derive/compare ABIs and exercise wallet mocks. |
+| `node web/scripts/generate-abis.mjs` | All four pinned ABI and creation-code hashes match. KeelHook is derived from the pinned factory source, with its runtime fingerprint checked separately. Committed ABI files were unchanged. |
+| `node web/scripts/check-chain.mjs --live` | 14 checks passed: amount/metadata bounds, social links, exact pool math, HTTP-400 range recovery, RPC fallback/failure, wallet fallback, live code/wiring, accounting/event decoding and refresh deduplication. At block 26,162,910 the factory was paused; launches, runs, pools, accrued fees, repayments and basket balances were all zero; run price was 0.5 IMD. |
+| `node web/scripts/check-wallet.mjs` | 17 checks passed with local EIP-1193 mocks: exact approvals, balance rejection, router/launch/claim simulation, receipt failures, both creator actions, strict share decrease, and chosen-provider isolation. No real wallet, key or broadcast. |
+| `/opt/imd-mcp/python/bin/python test/scratch/check-browser.py` | 72 interaction assertions passed against the production export at a nested `/dist/` URL. Main pages checked at 390×844 and 1440×1000, plus island reflow at 320/700/1000px. No page JavaScript errors or failed live resource requests were recorded. |
+| `/opt/imd-mcp/python/bin/python test/scratch/check-extra.py` | 19 additional assertions passed: image crop/format/size/upload behavior, drop/replace, 320px page reflow and input sizes, modal focus trapping/return, motion pause and measured solid text contrast. |
+
+Browser scripts and their fixtures lived only in disposable `test/scratch/`; they are not runtime code or submitted assets. The export was served locally with `python3 -m http.server 4173 --bind 0.0.0.0`. The supplied browser tool also opened and inspected the production island. The live mainnet state has no launched token, so live token routes correctly showed “Token not found”; populated token, quote, wallet and creator states were exercised through isolated, ABI-encoded responses. No fixture token or synthetic numbers are bundled or included in the retained screenshots. The runtime's request-interception API failed internally; the isolated tests replaced `fetch` before app startup instead, without changing production source.
+
+Retained screenshots of real mainnet/empty states: [mobile island](docs/website/mobile-island.webp), [desktop island](docs/website/desktop-island.webp), [mobile market](docs/website/mobile-market.webp), [desktop market](docs/website/desktop-market.webp), [mobile launch](docs/website/mobile-launch.webp), [desktop launch](docs/website/desktop-launch.webp), [mobile token unavailable](docs/website/mobile-token-unavailable.webp), [desktop token unavailable](docs/website/desktop-token-unavailable.webp). These files were opened for visual review, alongside disposable screenshots of populated token/creator/image states.
+
+The pinned Better Interface workflow and core principles of all six domains were applied during implementation, followed by one consolidated review:
+
+| Domain | Coverage and outcome |
+| --- | --- |
+| Accessibility — Checked | Native controls and modal dialog, wallet focus trap/Escape/return, D-pad focus recovery, Enter/Space/A, named file and link fields, inline validation, 44px stall/robot targets and visible focus. Screen-reader and physical-device sessions were not performed. |
+| Layout — Checked | Island, market, launch and token routes at both required widths; 320px reflow; phone scene enlargement, edge trees, unobscured robots/player, visible proximity prompt, stacked form/trade layouts, creator-card spacing and no horizontal overflow. Native 200% zoom was not tested. |
+| Writing — Checked | Real-zero/loading/unavailable distinctions, direct Retry and Disconnect actions, HTTPS/domain hints, image availability/error copy, irreversible-share note, FDV labels and exact requested close-notice wording. All changed text is English. |
+| Typography — Checked | Existing Syncopate/Manrope/JetBrains Mono preserved and loaded; numeric data remains monospaced; long fields and labels wrap; phone text inputs measure at least 16px. Chrome signs retain compact 11px titles/10px figures in the game’s existing visual language. |
+| Colors — Checked, limited | Existing monochrome tokens retained. Browser-computed solid pairs measured: `#a4a4ad` on `#050505` 8.24:1; `#a4a4ad` on `#0d0d0f` 7.85:1; input `#ededf0` on `#15151a` 15.57:1. All exceed 4.5:1. Gradient/image-backed text and every hover/focus adjacency were not exhaustively measured. |
+| UI — Checked | Chrome signs and press/hover/nearby states, native wallet modal, shared social icons, file preview/replace/remove/drop/error states, trading/creator disabled and pending states, RPC retry, image fallback and ambient-motion pause. Reduced-motion CSS was inspected; browser emulation failed with `Page.setEmulatedMedia: imposti is not defined`. Slow-motion replay was not performed. |
+
+Findings fixed and rechecked in the final source/export:
+
+| Severity | Source | Finding, correction and evidence |
+| --- | --- | --- |
+| High | `web/src/Island.tsx:359`, `web/src/Island.tsx:1173` | Enter reactivated a focused D-pad button. Pointer presses now release focus to the scene and scene keys talk/advance. D-pad→Enter, Space and A passed at both required widths. Header/menu controls retain normal keyboard activation. |
+| High | `web/src/island.css:974`, `web/src/island.css:1076` | Small mobile stalls and foreground trees obscured interaction; short-screen rules hid the prompt. Enlarged projection, back/side trees, actors above trees and 44px hit areas passed rendered/geometry checks. |
+| High | `web/src/chain/index.ts:174`, `web/src/Island.tsx:193` | Island stops had no market-backed figures. One block snapshot now supplies events, pool state and pause status, with explicit loading/error/Retry states. Encoded accounting and live-zero checks passed. |
+| High | `web/src/chain/wallet.ts:84`, `web/src/WalletChooser.tsx:14` | The global injected provider prevented reliable multi-wallet choice. Discovery, remembered choice, disconnect, scoped listeners and chosen-provider writes passed two-wallet browser and write-helper tests. |
+| High | `web/src/TokenPage.tsx:464`, `web/src/chain/index.ts:483` | Approval could be requested despite insufficient balance. UI and a fresh pre-approval read now reject it. Buy and sell tests confirm no approval is sent. |
+| Medium | `web/src/Launch.tsx:76`, `web/src/ImagePicker.tsx:6` | A generic link list and image URL lacked requested validation/upload behavior. Typed social fields and square WEBP preparation/upload now keep the 1,024-byte guard, reject invalid domains/files and show immediate previews. Browser and metadata checks passed. |
+| Medium | `web/src/TokenPage.tsx:437`, `web/src/TokenPage.tsx:551`, `web/src/HowItWorks.tsx:100` | Buy links did not focus trading; claim wording overstated the effect of selling. Scroll/focus and the requested snapshot/buyer notices were verified. |
+| Medium | `web/src/TokenPage.tsx:722`, `web/src/chain/index.ts:549` | Missing creator controls. Creator-only rendering, accrued Claim and irreversible strict share decrease were tested, including simulation before each send. |
+| Medium | `web/src/chain/rpc.ts:42` | An RPC HTTP-400 log-range response lost its recovery message. JSON error details now reach adaptive scanning; the HTTP-400 regression and live reads passed. |
+| Low | `web/src/island.css:974`, `web/src/styles.css:3201` | Render review found an inherited selector hiding the HQ title and adjacent trade/creator cards touching. Removed the selector and added 24px creator-card separation; screenshots were rechecked. |
+
+Submission cleanup removed generated dependencies and browser caches without changing any ignore file. The complete standalone snapshot measured approximately **2.59 MB as a Git bundle** and **5.60 MB as raw files**, below the 8,388,608-byte limit. `dist/` contains 783,721 bytes of complete runtime assets. The source, unchanged frontend manifest/lockfile, fonts and notices remain present.
+
+Complete for the stated implementation and local-check scope. Upload-server CORS/persistence and genuine installed-wallet/mainnet confirmations remain untested because the endpoint is intentionally empty and this task authorizes no on-chain changes. Browser emulation does not establish iOS/Safari behavior, native zoom, screen-reader compatibility or full accessibility compliance. Dark mode is the existing sole theme; alternate themes/RTL/localization are not applicable to this English-only assignment.
 
 ## Contract build and test
 
