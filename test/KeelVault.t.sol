@@ -128,6 +128,7 @@ contract KeelVaultTest is KeelTestBase {
         uint256 launchTime = vault.project(token).launchedAt;
         vm.expectRevert(KeelVault.CloseNotReady.selector);
         vault.close(token);
+        vm.roll(block.number + 1);
         vault.announceClose(token);
         vm.expectRevert(KeelVault.NoticeExists.selector);
         vault.announceClose(token);
@@ -149,16 +150,37 @@ contract KeelVaultTest is KeelTestBase {
     }
 
     function testCloseAtExactThirtyDaysWithMatureNotice() public {
+        vm.roll(vm.getBlockNumber() + 1);
+        uint256 noticeBlock = vm.getBlockNumber();
         vault.announceClose(token);
+        assertEq(vault.project(token).snapshotBlock, noticeBlock - 1);
         vm.warp(block.timestamp + 30 days);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 5);
         vault.close(token);
-        assertEq(vault.project(token).snapshotBlock, block.number - 1);
+        assertEq(vault.project(token).snapshotBlock, noticeBlock - 1);
     }
 
-    function testSnapshotExcludesTransferAndPurchaseInCloseBlock() public {
+    function testNoticeSnapshotRejectsLaunchBlockAndResetsOnCancel() public {
+        // setUp launches in the current block: the previous block predates the token.
+        vm.expectRevert(KeelVault.CloseNotReady.selector);
+        vault.announceClose(token);
+        // Read the block through the cheatcode: the compiler may cache block.number across vm.roll.
+        vm.roll(vm.getBlockNumber() + 1);
+        vault.announceClose(token);
+        assertEq(vault.project(token).snapshotBlock, vm.getBlockNumber() - 1);
+        vault.cancelClose(token);
+        assertEq(vault.project(token).snapshotBlock, 0);
+        vm.roll(vm.getBlockNumber() + 3);
+        vault.announceClose(token);
+        assertEq(vault.project(token).snapshotBlock, vm.getBlockNumber() - 1);
+    }
+
+    function testSnapshotExcludesTransferAndPurchaseAfterNotice() public {
         uint256 bought = _buy(alice, 100 ether);
         _deposit(2 ether);
+        vm.roll(block.number + 1);
+        // A purchase in the notice block itself (front-running the notice) is excluded as well.
+        _buy(bob, 10 ether);
         vault.announceClose(token);
         vm.warp(block.timestamp + 30 days);
         vm.roll(block.number + 1);
@@ -183,6 +205,34 @@ contract KeelVaultTest is KeelTestBase {
         vm.expectRevert(KeelVault.NothingToClaim.selector);
         vault.claim(token);
         assertEq(vault.project(token).basket, 0);
+        _solvent();
+    }
+
+    /// @dev Audit finding aab3704d: a buyer entering one block before close captured the basket.
+    function testLateBuyerCannotCaptureHolderBasket() public {
+        _buy(alice, 1_000 ether);
+        _deposit(10_000 ether);
+        vm.roll(block.number + 1);
+        vault.announceClose(token);
+        uint256 aliceEntitlementBefore = vault.project(token).basket;
+        vm.warp(block.timestamp + 31 days);
+        vm.roll(block.number + 1);
+        // Bob buys a large position in block N-1 and the owner closes in block N.
+        uint256 bobBefore = imd.balanceOf(bob);
+        uint256 bought = _buy(bob, 200_000 ether);
+        vm.roll(block.number + 1);
+        vault.close(token);
+        KeelVault.Project memory p = vault.project(token);
+        assertGe(p.poolAtClose, aliceEntitlementBefore);
+        assertEq(vault.claimable(token, bob), 0);
+        assertEq(vault.claimable(token, alice), p.poolAtClose);
+        vm.prank(bob);
+        vm.expectRevert(KeelVault.NothingToClaim.selector);
+        vault.claim(token);
+        _sell(bob, bought);
+        assertLt(imd.balanceOf(bob), bobBefore);
+        vm.prank(alice);
+        assertEq(vault.claim(token), p.poolAtClose);
         _solvent();
     }
 

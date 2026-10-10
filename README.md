@@ -127,9 +127,9 @@ The specified `recordRun` threshold is the full `runPrice`: an active creator wi
 
 ## Closing and holder claims
 
-The vault owner calls `announceClose(token)`, may call `cancelClose(token)`, and may close only once both deadlines have passed: seven days after the most recent notice and thirty days after launch. Cancelling removes the notice; a new notice starts a new seven-day period.
+The vault owner calls `announceClose(token)`, may call `cancelClose(token)`, and may close only once both deadlines have passed: seven days after the most recent notice and thirty days after launch. Cancelling removes the notice and its snapshot; a new notice starts a new seven-day period with a new snapshot.
 
-`close(token)` distributes pending fees under Building rules, freezes `poolAtClose = basket`, and snapshots at `block.number - 1`. Circulating supply is fixed total supply minus the PoolManager's and dead address's balances at that same block. The creator's Building slot is released. The token and permanently locked pool continue trading.
+`announceClose(token)` fixes the holder snapshot at `block.number - 1`, the block before the notice, and reverts if the PoolManager held no tokens at that block (a notice in the launch block). `close(token)` distributes pending fees under Building rules, freezes `poolAtClose = basket`, and uses that snapshot. Circulating supply is fixed total supply minus the PoolManager's and dead address's balances at the snapshot block. The creator's Building slot is released. The token and permanently locked pool continue trading.
 
 Each holder calls `claim(token)` for itself once. Payment is:
 
@@ -137,7 +137,7 @@ Each holder calls `claim(token)` for itself once. Payment is:
 floor(poolAtClose * balanceAt(holder, snapshotBlock) / circulating)
 ```
 
-Current ownership is irrelevant. Transfers or purchases in the close block do not change snapshot rights, and transferring tokens afterwards does not transfer the claim. Custodians and wrappers receive the rights associated with their own ERC-20 balances; the vault does not look through to beneficial owners. PoolManager and the dead address are explicitly excluded from claiming. If circulating supply is zero, no claims are available and the pool remains locked. Integer claim dust and never-claimed allocations also remain locked: there is no expiry, redistribution or administrative sweep. `claimable(token, holder)` reports current unpaid entitlement; zero entitlements cannot submit a successful claim.
+Current ownership is irrelevant. Transfers or purchases in the notice block, or at any time between the notice and the close, do not change snapshot rights, and transferring tokens afterwards does not transfer the claim. Tokens bought once a close is public therefore carry no basket rights, so the basket cannot be captured by a buyer entering just before the close. Custodians and wrappers receive the rights associated with their own ERC-20 balances; the vault does not look through to beneficial owners. PoolManager and the dead address are explicitly excluded from claiming. If circulating supply is zero, no claims are available and the pool remains locked. Integer claim dust and never-claimed allocations also remain locked: there is no expiry, redistribution or administrative sweep. `claimable(token, holder)` reports current unpaid entitlement; zero entitlements cannot submit a successful claim.
 
 ## Integration events and quotes
 

@@ -182,6 +182,30 @@ contract KeelFactoryTest is KeelTestBase {
         factory.setSigner(address(0));
     }
 
+    /// @dev Audit finding 02328646: bounds whose maximum can never launch were accepted.
+    function testStartTickBoundsRejectMaximaAboveLiquidityCap() public {
+        vm.expectRevert(KeelFactory.InvalidTick.selector);
+        factory.setStartTickBounds(349000, 349200);
+        vm.expectRevert(KeelFactory.InvalidTick.selector);
+        factory.setStartTickBounds(880000, 886999);
+        factory.setStartTickBounds(-200000, 349199);
+        assertEq(factory.maxStartTick(), 349199);
+        address launched = _launch(bob, JOB2, 0, 349199);
+        assertEq(factory.lowerTick(launched), 349200);
+        assertGt(factory.lockedLiquidity(launched), 0);
+    }
+
+    function testFuzzAcceptedBoundsAlwaysLaunch(int24 maximum) public {
+        maximum = int24(bound(maximum, -200000, 400000));
+        try factory.setStartTickBounds(-200000, maximum) {
+            address launched = _launch(bob, JOB2, 0, maximum);
+            assertTrue(factory.isLaunched(launched));
+        } catch (bytes memory reason) {
+            assertEq(bytes4(reason), KeelFactory.InvalidTick.selector);
+            assertGe(maximum, 349200);
+        }
+    }
+
     function testNonAlignedNegativeStartTickRoundsStrictlyUp() public {
         address launched = _launch(bob, JOB2, 0, -100001);
         assertEq(factory.lowerTick(launched), -100000);

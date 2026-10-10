@@ -247,10 +247,17 @@ contract KeelVault is Ownable2Step, ReentrancyGuard {
         emit RunVerified(token, jobRef, commit, 0);
     }
 
+    /// @dev The holder snapshot is fixed at the block before the notice, so tokens bought once a close is
+    /// public (or in the notice block itself) carry no basket rights. The pool must already hold the
+    /// locked position at that block: a notice in the launch block would snapshot an empty token.
     function announceClose(address token) external onlyOwner {
         Project storage p = _building(token);
         if (p.closeNotice != 0) revert NoticeExists();
+        if (block.number == 0) revert CloseNotReady();
+        uint256 snapshot = block.number - 1;
+        if (IKeelToken(token).balanceAt(C.POOL_MANAGER, snapshot) == 0) revert CloseNotReady();
         p.closeNotice = uint64(block.timestamp);
+        p.snapshotBlock = snapshot;
         emit CloseAnnounced(
             token,
             block.timestamp,
@@ -262,6 +269,7 @@ contract KeelVault is Ownable2Step, ReentrancyGuard {
         Project storage p = _building(token);
         if (p.closeNotice == 0) revert NoNotice();
         p.closeNotice = 0;
+        p.snapshotBlock = 0;
         emit CloseCancelled(token);
     }
 
@@ -269,15 +277,14 @@ contract KeelVault is Ownable2Step, ReentrancyGuard {
         Project storage p = _building(token);
         if (
             p.closeNotice == 0 || block.timestamp < uint256(p.closeNotice) + CLOSE_NOTICE
-                || block.timestamp < uint256(p.launchedAt) + MIN_LIFETIME || block.number == 0
+                || block.timestamp < uint256(p.launchedAt) + MIN_LIFETIME
         ) revert CloseNotReady();
         IKeelHook(hook).distribute(token);
-        uint256 snapshot = block.number - 1;
+        uint256 snapshot = p.snapshotBlock;
         IKeelToken t = IKeelToken(token);
         uint256 circulating =
             t.totalSupply() - t.balanceAt(C.POOL_MANAGER, snapshot) - t.balanceAt(C.DEAD, snapshot);
         p.phase = Phase.Closed;
-        p.snapshotBlock = snapshot;
         p.poolAtClose = p.basket;
         p.circulating = circulating;
         buildingToken[p.creator] = address(0);

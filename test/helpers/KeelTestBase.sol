@@ -114,6 +114,8 @@ abstract contract KeelTestBase is Test {
     }
 
     function _matureClose() internal {
+        // The holder snapshot is the block before the notice, so leave the launch/purchase block first.
+        vm.roll(block.number + 1);
         vault.announceClose(token);
         vm.warp(block.timestamp + 31 days);
         vm.roll(block.number + 1);

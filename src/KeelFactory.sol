@@ -120,6 +120,9 @@ contract KeelFactory is Ownable2Step, EIP712, ReentrancyGuard, IUnlockCallback {
         if (minimum < C.MIN_TICK || maximum >= C.MAX_TICK - C.TICK_SPACING || minimum > maximum) {
             revert InvalidTick();
         }
+        // Whole-supply liquidity grows with the start tick; the maximum must stay launchable.
+        (, uint256 liquidity) = _position(maximum);
+        if (liquidity > Pool.tickSpacingToMaxLiquidityPerTick(C.TICK_SPACING)) revert InvalidTick();
         minStartTick = minimum;
         maxStartTick = maximum;
         tickBoundsSet = true;
@@ -204,14 +207,7 @@ contract KeelFactory is Ownable2Step, EIP712, ReentrancyGuard, IUnlockCallback {
         IKeelToken(token).initialize(name, symbol, address(this));
         if (IERC20(token).balanceOf(address(this)) != C.SUPPLY) revert InvalidLiquidity();
 
-        int24 compressed = startTick / C.TICK_SPACING;
-        if (startTick < 0 && startTick % C.TICK_SPACING != 0) --compressed;
-        int24 lower = (compressed + 1) * C.TICK_SPACING;
-        uint160 sqrtLower = TickMath.getSqrtPriceAtTick(lower);
-        uint160 sqrtUpper = TickMath.getSqrtPriceAtTick(C.MAX_TICK);
-        uint256 liquidity = FullMath.mulDiv(
-            C.SUPPLY, FullMath.mulDiv(sqrtLower, sqrtUpper, 1 << 96), uint256(sqrtUpper) - sqrtLower
-        );
+        (int24 lower, uint256 liquidity) = _position(startTick);
         if (liquidity == 0 || liquidity > Pool.tickSpacingToMaxLiquidityPerTick(C.TICK_SPACING)) {
             revert InvalidLiquidity();
         }
@@ -280,6 +276,19 @@ contract KeelFactory is Ownable2Step, EIP712, ReentrancyGuard, IUnlockCallback {
         IERC20(token).safeTransfer(C.POOL_MANAGER, amount);
         if (poolManager.settle() != amount) revert InvalidLiquidity();
         return abi.encode(amount);
+    }
+
+    /// @dev The first usable tick strictly above the start tick and the whole-supply token0 liquidity
+    /// of the range from there to the maximum tick.
+    function _position(int24 startTick) private pure returns (int24 lower, uint256 liquidity) {
+        int24 compressed = startTick / C.TICK_SPACING;
+        if (startTick < 0 && startTick % C.TICK_SPACING != 0) --compressed;
+        lower = (compressed + 1) * C.TICK_SPACING;
+        uint160 sqrtLower = TickMath.getSqrtPriceAtTick(lower);
+        uint160 sqrtUpper = TickMath.getSqrtPriceAtTick(C.MAX_TICK);
+        liquidity = FullMath.mulDiv(
+            C.SUPPLY, FullMath.mulDiv(sqrtLower, sqrtUpper, 1 << 96), uint256(sqrtUpper) - sqrtLower
+        );
     }
 
     function _uuid(string calldata value) private pure {

@@ -155,6 +155,8 @@ contract KeelHandler is Test {
         if (p.phase != KeelVault.Phase.Building) return;
         uint256 beforeBalance = _before();
         if (p.closeNotice == 0) {
+            // The notice snapshots the previous block, which must be after the launch block.
+            vm.roll(block.number + 1);
             vault.announceClose(token);
         } else if (cancel) {
             vault.cancelClose(token);
