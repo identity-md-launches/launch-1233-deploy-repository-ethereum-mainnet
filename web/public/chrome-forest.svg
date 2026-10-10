@@ -1,0 +1,319 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="760" viewBox="0 0 1600 760" fill="none">
+<defs>
+  <linearGradient id="ground" x1="800" y1="320" x2="800" y2="760" gradientUnits="userSpaceOnUse"><stop stop-color="#191a1b"/><stop offset="1" stop-color="#050505"/></linearGradient>
+  <linearGradient id="trunk" x1="-21" y1="0" x2="18" y2="0" gradientUnits="userSpaceOnUse"><stop stop-color="#0e0f11"/><stop offset=".23" stop-color="#c4c6c9"/><stop offset=".34" stop-color="#fff"/><stop offset=".47" stop-color="#7e8084"/><stop offset=".7" stop-color="#212225"/><stop offset=".85" stop-color="#96999b"/><stop offset="1" stop-color="#252628"/></linearGradient>
+  <linearGradient id="branch" x1="-160" y1="-150" x2="160" y2="-70" gradientUnits="userSpaceOnUse"><stop stop-color="#161718"/><stop offset=".2" stop-color="#84878c"/><stop offset=".39" stop-color="#f6f6f8"/><stop offset=".46" stop-color="#525459"/><stop offset=".69" stop-color="#dedee1"/><stop offset="1" stop-color="#414346"/></linearGradient>
+  <linearGradient id="leaf" x1="-16" y1="-8" x2="12" y2="11" gradientUnits="userSpaceOnUse"><stop stop-color="#191a1c"/><stop offset=".27" stop-color="#b5b7bb"/><stop offset=".48" stop-color="#fff"/><stop offset=".51" stop-color="#55575b"/><stop offset=".75" stop-color="#cfd0d3"/><stop offset="1" stop-color="#34363a"/></linearGradient>
+  <radialGradient id="glow"><stop stop-color="#d8dadd" stop-opacity=".21"/><stop offset="1" stop-color="#929497" stop-opacity="0"/></radialGradient>
+  <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="shade"><stop stop-color="#050505"/><stop offset=".3" stop-color="#050505" stop-opacity=".97"/><stop offset=".55" stop-color="#050505" stop-opacity=".5"/><stop offset=".85" stop-color="#050505" stop-opacity="0"/></linearGradient>
+  <radialGradient id="vignette" cx=".65" cy=".48" r=".75"><stop offset=".25" stop-color="#050505" stop-opacity="0"/><stop offset="1" stop-color="#050505"/></radialGradient>
+  <filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+  <g id="leaf-shape"><path d="M-19 0Q-3-17 19 0Q1 15-19 0Z" fill="url(#leaf)"/><path d="M-17 0 16 0" stroke="#fff" stroke-opacity=".4" stroke-width=".6"/></g>
+  <g id="tree">
+    <path d="M-27 8C-8-32-7-85-13-119C-18-162-4-209 5-249C6-211 2-163 11-128C17-87 8-41 31 8C16 12-16 13-27 8Z" fill="url(#trunk)"/>
+    <g stroke="url(#branch)" stroke-linecap="round">
+    <path d="M-3-112C-25-169-69-172-130-201M-1-145C25-186 61-218 129-226M-4-185C-28-218-56-240-86-256M3-200C35-223 44-249 52-280M-34-171C-65-196-93-228-97-259M35-181C77-184 96-195 142-197M9-111C54-153 83-160 166-153M-16-130C-68-130-90-136-165-143" stroke-width="7"/>
+    <path d="M-72-183-76-212M-113-195-141-223M-58-232-41-258M-22-209-26-249M47-208 46-236M94-219 110-253M108-191 105-218M82-157 86-187M129-154 145-176M-82-135-94-165M-122-138-151-165M25-218 24-257" stroke-width="3"/>
+    </g>
+<use href="#leaf-shape" transform="translate(-161.6 -217.5) rotate(63.6) scale(0.64)"/>
+<use href="#leaf-shape" transform="translate(-140.0 -223.3) rotate(31.1) scale(0.83)"/>
+<use href="#leaf-shape" transform="translate(-137.5 -207.6) rotate(26.4) scale(0.64)"/>
+<use href="#leaf-shape" transform="translate(-147.5 -216.5) rotate(25.0) scale(0.57)"/>
+<use href="#leaf-shape" transform="translate(-127.8 -221.4) rotate(35.4) scale(0.50)"/>
+<use href="#leaf-shape" transform="translate(-150.4 -232.5) rotate(-10.8) scale(0.59)"/>
+<use href="#leaf-shape" transform="translate(-149.0 -227.3) rotate(45.7) scale(0.80)"/>
+<use href="#leaf-shape" transform="translate(-148.9 -220.1) rotate(-41.0) scale(0.97)"/>
+<use href="#leaf-shape" transform="translate(-123.3 -218.1) rotate(-45.1) scale(0.97)"/>
+<use href="#leaf-shape" transform="translate(-119.0 -253.6) rotate(-10.6) scale(0.66)"/>
+<use href="#leaf-shape" transform="translate(-89.9 -251.2) rotate(-57.1) scale(0.69)"/>
+<use href="#leaf-shape" transform="translate(-127.1 -237.8) rotate(-1.6) scale(0.93)"/>
+<use href="#leaf-shape" transform="translate(-86.0 -248.9) rotate(37.3) scale(0.72)"/>
+<use href="#leaf-shape" transform="translate(-85.3 -252.9) rotate(-5.7) scale(0.99)"/>
+<use href="#leaf-shape" transform="translate(-126.4 -247.1) rotate(-24.7) scale(0.65)"/>
+<use href="#leaf-shape" transform="translate(-83.3 -250.0) rotate(42.1) scale(0.60)"/>
+<use href="#leaf-shape" transform="translate(-88.8 -251.2) rotate(-51.9) scale(0.99)"/>
+<use href="#leaf-shape" transform="translate(-128.4 -238.3) rotate(-38.5) scale(0.77)"/>
+<use href="#leaf-shape" transform="translate(-77.4 -251.8) rotate(23.1) scale(0.86)"/>
+<use href="#leaf-shape" transform="translate(-86.4 -246.4) rotate(-34.0) scale(0.78)"/>
+<use href="#leaf-shape" transform="translate(-54.8 -247.9) rotate(4.0) scale(0.72)"/>
+<use href="#leaf-shape" transform="translate(-84.9 -245.1) rotate(12.3) scale(0.87)"/>
+<use href="#leaf-shape" transform="translate(-47.6 -249.8) rotate(-26.0) scale(0.71)"/>
+<use href="#leaf-shape" transform="translate(-84.1 -260.8) rotate(46.5) scale(0.82)"/>
+<use href="#leaf-shape" transform="translate(-84.3 -254.4) rotate(-11.8) scale(0.90)"/>
+<use href="#leaf-shape" transform="translate(-53.7 -258.8) rotate(-54.2) scale(0.55)"/>
+<use href="#leaf-shape" transform="translate(-66.0 -258.5) rotate(-60.4) scale(0.86)"/>
+<use href="#leaf-shape" transform="translate(-22.7 -260.5) rotate(-61.1) scale(0.65)"/>
+<use href="#leaf-shape" transform="translate(-24.1 -267.4) rotate(-51.1) scale(0.47)"/>
+<use href="#leaf-shape" transform="translate(-49.6 -253.1) rotate(27.8) scale(0.80)"/>
+<use href="#leaf-shape" transform="translate(-36.3 -259.8) rotate(-63.5) scale(0.89)"/>
+<use href="#leaf-shape" transform="translate(-26.7 -264.1) rotate(-50.1) scale(0.60)"/>
+<use href="#leaf-shape" transform="translate(-33.3 -250.8) rotate(-55.6) scale(0.88)"/>
+<use href="#leaf-shape" transform="translate(-40.1 -265.0) rotate(16.2) scale(0.53)"/>
+<use href="#leaf-shape" transform="translate(-5.6 -251.4) rotate(30.2) scale(0.75)"/>
+<use href="#leaf-shape" transform="translate(-10.6 -246.8) rotate(6.5) scale(0.53)"/>
+<use href="#leaf-shape" transform="translate(32.6 -261.1) rotate(-33.2) scale(0.83)"/>
+<use href="#leaf-shape" transform="translate(7.1 -265.6) rotate(4.9) scale(0.76)"/>
+<use href="#leaf-shape" transform="translate(28.9 -273.3) rotate(21.1) scale(0.79)"/>
+<use href="#leaf-shape" transform="translate(15.5 -264.4) rotate(-48.7) scale(0.86)"/>
+<use href="#leaf-shape" transform="translate(21.5 -284.4) rotate(-29.0) scale(0.72)"/>
+<use href="#leaf-shape" transform="translate(8.2 -270.7) rotate(58.7) scale(0.85)"/>
+<use href="#leaf-shape" transform="translate(27.4 -271.6) rotate(-1.6) scale(0.87)"/>
+<use href="#leaf-shape" transform="translate(34.2 -273.8) rotate(32.2) scale(0.81)"/>
+<use href="#leaf-shape" transform="translate(5.4 -283.2) rotate(-14.6) scale(0.62)"/>
+<use href="#leaf-shape" transform="translate(65.8 -284.7) rotate(23.8) scale(0.84)"/>
+<use href="#leaf-shape" transform="translate(77.8 -283.1) rotate(-30.4) scale(0.99)"/>
+<use href="#leaf-shape" transform="translate(49.3 -277.5) rotate(-33.5) scale(0.67)"/>
+<use href="#leaf-shape" transform="translate(63.5 -273.2) rotate(57.7) scale(0.98)"/>
+<use href="#leaf-shape" transform="translate(57.3 -277.7) rotate(32.2) scale(0.73)"/>
+<use href="#leaf-shape" transform="translate(68.1 -287.0) rotate(-6.5) scale(0.62)"/>
+<use href="#leaf-shape" transform="translate(40.3 -272.7) rotate(4.6) scale(0.73)"/>
+<use href="#leaf-shape" transform="translate(66.3 -289.8) rotate(-51.8) scale(0.79)"/>
+<use href="#leaf-shape" transform="translate(45.6 -292.3) rotate(0.2) scale(0.66)"/>
+<use href="#leaf-shape" transform="translate(113.7 -247.2) rotate(56.3) scale(0.88)"/>
+<use href="#leaf-shape" transform="translate(101.4 -245.1) rotate(-45.4) scale(0.93)"/>
+<use href="#leaf-shape" transform="translate(77.9 -238.8) rotate(61.3) scale(0.93)"/>
+<use href="#leaf-shape" transform="translate(111.0 -239.6) rotate(-1.5) scale(0.88)"/>
+<use href="#leaf-shape" transform="translate(103.6 -243.3) rotate(-2.5) scale(0.79)"/>
+<use href="#leaf-shape" transform="translate(106.3 -257.1) rotate(18.8) scale(0.96)"/>
+<use href="#leaf-shape" transform="translate(75.1 -234.1) rotate(49.7) scale(0.70)"/>
+<use href="#leaf-shape" transform="translate(97.7 -249.1) rotate(-33.6) scale(0.63)"/>
+<use href="#leaf-shape" transform="translate(114.8 -258.1) rotate(-4.6) scale(0.60)"/>
+<use href="#leaf-shape" transform="translate(136.1 -220.5) rotate(16.2) scale(0.57)"/>
+<use href="#leaf-shape" transform="translate(151.9 -234.5) rotate(45.5) scale(0.94)"/>
+<use href="#leaf-shape" transform="translate(121.2 -240.8) rotate(59.3) scale(0.93)"/>
+<use href="#leaf-shape" transform="translate(117.0 -222.2) rotate(41.1) scale(0.56)"/>
+<use href="#leaf-shape" transform="translate(111.7 -230.0) rotate(-23.5) scale(0.56)"/>
+<use href="#leaf-shape" transform="translate(107.2 -237.2) rotate(-62.4) scale(0.48)"/>
+<use href="#leaf-shape" transform="translate(117.2 -231.8) rotate(13.4) scale(0.65)"/>
+<use href="#leaf-shape" transform="translate(116.7 -231.2) rotate(13.1) scale(0.67)"/>
+<use href="#leaf-shape" transform="translate(129.9 -229.5) rotate(60.8) scale(0.50)"/>
+<use href="#leaf-shape" transform="translate(173.3 -194.1) rotate(-11.8) scale(0.80)"/>
+<use href="#leaf-shape" transform="translate(175.0 -194.7) rotate(36.1) scale(0.50)"/>
+<use href="#leaf-shape" transform="translate(144.8 -211.0) rotate(61.9) scale(0.57)"/>
+<use href="#leaf-shape" transform="translate(152.8 -196.4) rotate(44.0) scale(0.60)"/>
+<use href="#leaf-shape" transform="translate(175.4 -206.2) rotate(47.1) scale(0.53)"/>
+<use href="#leaf-shape" transform="translate(176.5 -214.1) rotate(48.8) scale(0.66)"/>
+<use href="#leaf-shape" transform="translate(164.6 -194.1) rotate(57.1) scale(0.94)"/>
+<use href="#leaf-shape" transform="translate(171.1 -212.4) rotate(61.5) scale(0.68)"/>
+<use href="#leaf-shape" transform="translate(144.2 -208.0) rotate(32.3) scale(1.00)"/>
+<use href="#leaf-shape" transform="translate(154.2 -164.6) rotate(5.4) scale(0.74)"/>
+<use href="#leaf-shape" transform="translate(128.5 -168.6) rotate(58.1) scale(0.47)"/>
+<use href="#leaf-shape" transform="translate(152.7 -174.0) rotate(-60.6) scale(0.98)"/>
+<use href="#leaf-shape" transform="translate(158.2 -185.4) rotate(62.4) scale(0.53)"/>
+<use href="#leaf-shape" transform="translate(153.0 -183.7) rotate(-30.7) scale(0.97)"/>
+<use href="#leaf-shape" transform="translate(163.9 -187.6) rotate(39.4) scale(0.80)"/>
+<use href="#leaf-shape" transform="translate(168.4 -186.6) rotate(-1.9) scale(0.47)"/>
+<use href="#leaf-shape" transform="translate(154.1 -181.5) rotate(64.7) scale(0.66)"/>
+<use href="#leaf-shape" transform="translate(171.8 -162.7) rotate(40.1) scale(0.53)"/>
+<use href="#leaf-shape" transform="translate(130.7 -174.7) rotate(30.4) scale(0.98)"/>
+<use href="#leaf-shape" transform="translate(111.4 -184.6) rotate(43.0) scale(0.66)"/>
+<use href="#leaf-shape" transform="translate(105.5 -193.1) rotate(49.4) scale(0.48)"/>
+<use href="#leaf-shape" transform="translate(99.8 -183.3) rotate(20.7) scale(0.60)"/>
+<use href="#leaf-shape" transform="translate(124.7 -177.3) rotate(-39.0) scale(0.72)"/>
+<use href="#leaf-shape" transform="translate(119.4 -184.9) rotate(-9.4) scale(0.70)"/>
+<use href="#leaf-shape" transform="translate(92.9 -179.0) rotate(2.5) scale(0.85)"/>
+<use href="#leaf-shape" transform="translate(103.5 -181.8) rotate(38.5) scale(0.46)"/>
+<use href="#leaf-shape" transform="translate(89.1 -177.9) rotate(-26.2) scale(0.52)"/>
+<use href="#leaf-shape" transform="translate(73.8 -206.0) rotate(-58.7) scale(0.98)"/>
+<use href="#leaf-shape" transform="translate(82.1 -219.3) rotate(-54.1) scale(0.61)"/>
+<use href="#leaf-shape" transform="translate(67.5 -206.4) rotate(14.3) scale(0.93)"/>
+<use href="#leaf-shape" transform="translate(75.4 -223.4) rotate(13.0) scale(0.52)"/>
+<use href="#leaf-shape" transform="translate(79.8 -220.2) rotate(-63.2) scale(0.89)"/>
+<use href="#leaf-shape" transform="translate(53.7 -213.1) rotate(-42.3) scale(0.96)"/>
+<use href="#leaf-shape" transform="translate(76.7 -216.8) rotate(13.4) scale(0.97)"/>
+<use href="#leaf-shape" transform="translate(83.4 -227.5) rotate(56.0) scale(0.79)"/>
+<use href="#leaf-shape" transform="translate(87.8 -222.9) rotate(-19.0) scale(0.71)"/>
+<use href="#leaf-shape" transform="translate(24.9 -223.9) rotate(-15.6) scale(0.74)"/>
+<use href="#leaf-shape" transform="translate(52.3 -225.0) rotate(-61.4) scale(0.99)"/>
+<use href="#leaf-shape" transform="translate(24.7 -239.4) rotate(-20.4) scale(0.91)"/>
+<use href="#leaf-shape" transform="translate(41.7 -221.8) rotate(22.6) scale(0.80)"/>
+<use href="#leaf-shape" transform="translate(34.1 -229.1) rotate(-55.3) scale(0.96)"/>
+<use href="#leaf-shape" transform="translate(48.8 -218.4) rotate(30.0) scale(0.79)"/>
+<use href="#leaf-shape" transform="translate(24.3 -236.2) rotate(18.9) scale(0.61)"/>
+<use href="#leaf-shape" transform="translate(22.6 -242.6) rotate(53.1) scale(0.84)"/>
+<use href="#leaf-shape" transform="translate(26.2 -229.9) rotate(37.7) scale(0.56)"/>
+<use href="#leaf-shape" transform="translate(-10.1 -246.0) rotate(-9.7) scale(0.99)"/>
+<use href="#leaf-shape" transform="translate(2.8 -244.3) rotate(-6.6) scale(0.98)"/>
+<use href="#leaf-shape" transform="translate(18.1 -236.0) rotate(-36.8) scale(0.60)"/>
+<use href="#leaf-shape" transform="translate(-0.7 -232.3) rotate(-20.2) scale(0.46)"/>
+<use href="#leaf-shape" transform="translate(-14.0 -242.8) rotate(11.1) scale(0.95)"/>
+<use href="#leaf-shape" transform="translate(0.7 -229.4) rotate(-14.1) scale(0.86)"/>
+<use href="#leaf-shape" transform="translate(12.3 -229.5) rotate(12.9) scale(0.73)"/>
+<use href="#leaf-shape" transform="translate(-13.4 -227.8) rotate(-8.1) scale(0.88)"/>
+<use href="#leaf-shape" transform="translate(-9.9 -231.0) rotate(52.1) scale(0.61)"/>
+<use href="#leaf-shape" transform="translate(-26.1 -226.3) rotate(-45.5) scale(0.49)"/>
+<use href="#leaf-shape" transform="translate(-44.7 -207.8) rotate(-1.0) scale(0.98)"/>
+<use href="#leaf-shape" transform="translate(-52.7 -222.9) rotate(-49.1) scale(0.86)"/>
+<use href="#leaf-shape" transform="translate(-53.0 -207.4) rotate(-9.7) scale(0.61)"/>
+<use href="#leaf-shape" transform="translate(-61.9 -228.7) rotate(-26.6) scale(0.76)"/>
+<use href="#leaf-shape" transform="translate(-54.3 -217.4) rotate(44.8) scale(0.66)"/>
+<use href="#leaf-shape" transform="translate(-30.3 -211.0) rotate(31.3) scale(0.84)"/>
+<use href="#leaf-shape" transform="translate(-60.0 -222.5) rotate(52.1) scale(0.66)"/>
+<use href="#leaf-shape" transform="translate(-62.5 -225.3) rotate(45.0) scale(0.60)"/>
+<use href="#leaf-shape" transform="translate(-97.9 -203.3) rotate(-32.9) scale(0.92)"/>
+<use href="#leaf-shape" transform="translate(-99.0 -193.8) rotate(15.2) scale(0.80)"/>
+<use href="#leaf-shape" transform="translate(-105.8 -204.1) rotate(6.8) scale(0.64)"/>
+<use href="#leaf-shape" transform="translate(-74.4 -209.2) rotate(33.5) scale(0.83)"/>
+<use href="#leaf-shape" transform="translate(-93.8 -193.2) rotate(8.6) scale(0.54)"/>
+<use href="#leaf-shape" transform="translate(-76.4 -206.9) rotate(51.4) scale(0.77)"/>
+<use href="#leaf-shape" transform="translate(-112.2 -188.6) rotate(-51.9) scale(0.84)"/>
+<use href="#leaf-shape" transform="translate(-73.5 -207.4) rotate(-54.4) scale(0.56)"/>
+<use href="#leaf-shape" transform="translate(-92.8 -188.5) rotate(-44.0) scale(0.90)"/>
+<use href="#leaf-shape" transform="translate(-135.3 -177.5) rotate(-11.2) scale(0.79)"/>
+<use href="#leaf-shape" transform="translate(-140.8 -174.8) rotate(53.1) scale(0.62)"/>
+<use href="#leaf-shape" transform="translate(-127.7 -164.5) rotate(-15.1) scale(0.90)"/>
+<use href="#leaf-shape" transform="translate(-152.1 -180.8) rotate(34.4) scale(0.99)"/>
+<use href="#leaf-shape" transform="translate(-146.0 -164.0) rotate(-25.5) scale(0.52)"/>
+<use href="#leaf-shape" transform="translate(-150.8 -183.9) rotate(50.5) scale(0.89)"/>
+<use href="#leaf-shape" transform="translate(-141.4 -170.1) rotate(39.6) scale(0.51)"/>
+<use href="#leaf-shape" transform="translate(-157.9 -174.7) rotate(-18.3) scale(0.58)"/>
+<use href="#leaf-shape" transform="translate(-122.0 -180.6) rotate(-4.5) scale(0.90)"/>
+<use href="#leaf-shape" transform="translate(-149.6 -152.6) rotate(23.3) scale(0.84)"/>
+<use href="#leaf-shape" transform="translate(-146.8 -162.3) rotate(-52.4) scale(0.48)"/>
+<use href="#leaf-shape" transform="translate(-148.2 -161.0) rotate(32.9) scale(0.67)"/>
+<use href="#leaf-shape" transform="translate(-169.8 -154.6) rotate(61.5) scale(0.96)"/>
+<use href="#leaf-shape" transform="translate(-185.7 -162.1) rotate(30.2) scale(0.90)"/>
+<use href="#leaf-shape" transform="translate(-145.3 -152.8) rotate(10.0) scale(0.95)"/>
+<use href="#leaf-shape" transform="translate(-155.0 -151.7) rotate(-26.7) scale(0.93)"/>
+<use href="#leaf-shape" transform="translate(-141.7 -167.4) rotate(-63.4) scale(0.56)"/>
+<use href="#leaf-shape" transform="translate(-142.4 -143.5) rotate(22.7) scale(0.68)"/>
+<use href="#leaf-shape" transform="translate(-99.4 -147.2) rotate(-29.7) scale(0.50)"/>
+<use href="#leaf-shape" transform="translate(-84.6 -146.1) rotate(26.5) scale(0.51)"/>
+<use href="#leaf-shape" transform="translate(-115.3 -152.2) rotate(-15.4) scale(0.80)"/>
+<use href="#leaf-shape" transform="translate(-84.0 -158.9) rotate(-24.8) scale(0.68)"/>
+<use href="#leaf-shape" transform="translate(-91.5 -147.3) rotate(-27.4) scale(0.55)"/>
+<use href="#leaf-shape" transform="translate(-112.3 -164.4) rotate(-27.1) scale(0.66)"/>
+<use href="#leaf-shape" transform="translate(-93.9 -155.2) rotate(62.4) scale(0.45)"/>
+<use href="#leaf-shape" transform="translate(-98.5 -160.4) rotate(-27.2) scale(0.51)"/>
+<use href="#leaf-shape" transform="translate(-118.7 -150.3) rotate(-28.5) scale(0.52)"/>
+<use href="#leaf-shape" transform="translate(-52.6 -141.9) rotate(-47.7) scale(0.92)"/>
+<use href="#leaf-shape" transform="translate(-56.1 -148.7) rotate(29.0) scale(0.75)"/>
+<use href="#leaf-shape" transform="translate(-64.9 -158.0) rotate(53.1) scale(0.57)"/>
+<use href="#leaf-shape" transform="translate(-73.7 -140.6) rotate(38.1) scale(0.87)"/>
+<use href="#leaf-shape" transform="translate(-81.6 -153.7) rotate(63.1) scale(0.97)"/>
+<use href="#leaf-shape" transform="translate(-49.9 -148.9) rotate(-34.6) scale(0.81)"/>
+<use href="#leaf-shape" transform="translate(-70.6 -155.4) rotate(19.5) scale(0.86)"/>
+<use href="#leaf-shape" transform="translate(-57.2 -155.9) rotate(16.4) scale(0.84)"/>
+<use href="#leaf-shape" transform="translate(-80.7 -164.6) rotate(-21.3) scale(0.99)"/>
+<use href="#leaf-shape" transform="translate(67.3 -153.4) rotate(-25.6) scale(0.62)"/>
+<use href="#leaf-shape" transform="translate(86.0 -164.2) rotate(-14.5) scale(0.53)"/>
+<use href="#leaf-shape" transform="translate(78.5 -163.6) rotate(-25.7) scale(0.60)"/>
+<use href="#leaf-shape" transform="translate(95.7 -154.8) rotate(-18.0) scale(0.90)"/>
+<use href="#leaf-shape" transform="translate(77.6 -158.3) rotate(-6.2) scale(0.56)"/>
+<use href="#leaf-shape" transform="translate(80.4 -174.9) rotate(56.2) scale(0.97)"/>
+<use href="#leaf-shape" transform="translate(75.4 -175.6) rotate(2.0) scale(0.53)"/>
+<use href="#leaf-shape" transform="translate(85.3 -174.3) rotate(53.3) scale(0.80)"/>
+<use href="#leaf-shape" transform="translate(96.7 -167.8) rotate(-56.4) scale(0.46)"/>
+<use href="#leaf-shape" transform="translate(153.3 -159.4) rotate(48.0) scale(0.73)"/>
+<use href="#leaf-shape" transform="translate(151.3 -138.8) rotate(-10.4) scale(0.73)"/>
+<use href="#leaf-shape" transform="translate(138.4 -150.4) rotate(-16.3) scale(0.45)"/>
+<use href="#leaf-shape" transform="translate(172.9 -152.7) rotate(-4.1) scale(0.58)"/>
+<use href="#leaf-shape" transform="translate(173.3 -157.3) rotate(1.2) scale(0.66)"/>
+<use href="#leaf-shape" transform="translate(171.0 -140.9) rotate(-14.9) scale(0.93)"/>
+<use href="#leaf-shape" transform="translate(153.1 -141.1) rotate(26.6) scale(0.71)"/>
+<use href="#leaf-shape" transform="translate(145.1 -147.9) rotate(-29.5) scale(0.95)"/>
+<use href="#leaf-shape" transform="translate(141.0 -155.2) rotate(-53.8) scale(0.80)"/>
+</g></defs>
+<path fill="#050505" d="M0 0h1600v760H0z"/>
+<ellipse cx="1130" cy="390" rx="610" ry="405" fill="url(#glow)"/>
+<path d="M827 0h17L1060 649H724L827 0Z" fill="url(#beam)" opacity=".3"/>
+<path d="M1305 0h32L1110 660H929L1305 0Z" fill="url(#beam)" opacity=".42"/>
+<path d="M1550 0h9L1460 641h-152L1550 0Z" fill="url(#beam)" opacity=".36"/>
+<path d="M0 443Q845 328 1600 428V760H0Z" fill="url(#ground)"/>
+<g stroke="#aaaeb4" stroke-opacity=".07" stroke-width="1">
+<path d="M500 438h1100"/>
+<path d="M500 455h1100"/>
+<path d="M500 480h1100"/>
+<path d="M500 515h1100"/>
+<path d="M500 565h1100"/>
+<path d="M500 630h1100"/>
+<path d="M500 720h1100"/>
+<path d="M1060 390 150 760"/>
+<path d="M1060 390 330 760"/>
+<path d="M1060 390 510 760"/>
+<path d="M1060 390 690 760"/>
+<path d="M1060 390 870 760"/>
+<path d="M1060 390 1050 760"/>
+<path d="M1060 390 1230 760"/>
+<path d="M1060 390 1410 760"/>
+<path d="M1060 390 1590 760"/>
+<path d="M1060 390 1770 760"/>
+<path d="M1060 390 1950 760"/>
+</g>
+<use href="#tree" transform="translate(572 459) scale(0.67)" opacity="0.17"/>
+<use href="#tree" transform="translate(736 411) scale(0.49)" opacity="0.18"/>
+<use href="#tree" transform="translate(884 432) scale(0.64)" opacity="0.3"/>
+<use href="#tree" transform="translate(1074 389) scale(0.46)" opacity="0.24"/>
+<use href="#tree" transform="translate(1309 420) scale(0.66)" opacity="0.2"/>
+<use href="#tree" transform="translate(1499 470) scale(0.78)" opacity="0.34"/>
+<use href="#tree" transform="translate(662 527) scale(0.9)" opacity="0.4"/>
+<use href="#tree" transform="translate(1110 468) scale(0.9)" opacity="0.46"/>
+<ellipse cx="1170" cy="567" rx="470" ry="44" fill="#8a8e94" opacity=".12" filter="url(#soft)"/>
+<ellipse cx="909" cy="620" rx="146.3" ry="18.62" fill="#000" opacity=".65"/>
+<use href="#tree" transform="translate(909 608) scale(1.33)" opacity="0.78"/>
+<ellipse cx="1415" cy="650" rx="169.4" ry="21.560000000000002" fill="#000" opacity=".65"/>
+<use href="#tree" transform="translate(1415 638) scale(1.54)" opacity="0.9"/>
+<ellipse cx="1157" cy="547" rx="95.7" ry="12.18" fill="#000" opacity=".65"/>
+<use href="#tree" transform="translate(1157 535) scale(0.87)" opacity="0.8"/>
+<use href="#leaf-shape" transform="translate(954.9 87.2) rotate(-29.5) scale(0.25)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1006.5 600.8) rotate(-47.1) scale(0.15)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1425.7 469.7) rotate(43.3) scale(0.21)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(897.3 334.6) rotate(59.5) scale(0.15)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(805.7 244.0) rotate(-40.2) scale(0.27)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1293.6 103.5) rotate(5.4) scale(0.23)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1310.5 465.2) rotate(-60.0) scale(0.24)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1217.6 121.9) rotate(-7.8) scale(0.25)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1017.4 713.9) rotate(-10.3) scale(0.16)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1071.0 224.0) rotate(-20.4) scale(0.17)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(828.8 103.2) rotate(-11.5) scale(0.15)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1158.2 517.7) rotate(-75.1) scale(0.13)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1295.2 141.0) rotate(-58.2) scale(0.11)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(873.3 513.0) rotate(17.1) scale(0.22)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1285.6 86.5) rotate(-26.0) scale(0.26)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(772.7 674.5) rotate(-74.7) scale(0.21)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1009.7 484.5) rotate(18.5) scale(0.13)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1333.5 595.9) rotate(54.4) scale(0.19)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1436.3 516.9) rotate(59.9) scale(0.28)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1422.9 663.0) rotate(51.9) scale(0.17)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(851.0 395.3) rotate(33.6) scale(0.24)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(726.3 491.6) rotate(20.6) scale(0.23)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(948.4 102.1) rotate(-25.6) scale(0.23)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1431.7 698.7) rotate(79.5) scale(0.19)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1055.1 414.9) rotate(79.2) scale(0.22)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1471.7 621.2) rotate(-81.6) scale(0.14)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1053.4 400.2) rotate(-58.8) scale(0.24)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1330.0 635.8) rotate(66.0) scale(0.16)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1508.8 697.8) rotate(38.4) scale(0.13)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1042.8 462.6) rotate(-62.0) scale(0.20)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1501.3 283.0) rotate(-69.3) scale(0.24)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(820.0 126.0) rotate(78.4) scale(0.27)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(1385.8 536.9) rotate(-9.0) scale(0.22)" opacity=".7"/>
+<use href="#leaf-shape" transform="translate(920.1 403.7) rotate(48.0) scale(0.11)" opacity=".7"/>
+<path d="M867.4 266.6h1.5v1.5h-1.5z" fill="#fff" opacity="0.42"/>
+<path d="M630.4 415.9h1.5v1.5h-1.5z" fill="#fff" opacity="0.34"/>
+<path d="M663.6 312.5h1.5v1.5h-1.5z" fill="#fff" opacity="0.38"/>
+<path d="M964.8 139.7h1.5v1.5h-1.5z" fill="#fff" opacity="0.63"/>
+<path d="M463.2 561.5h1.5v1.5h-1.5z" fill="#fff" opacity="0.31"/>
+<path d="M684.3 189.4h1.5v1.5h-1.5z" fill="#fff" opacity="0.63"/>
+<path d="M478.4 471.3h1.5v1.5h-1.5z" fill="#fff" opacity="0.37"/>
+<path d="M1315.3 585.5h1.5v1.5h-1.5z" fill="#fff" opacity="0.54"/>
+<path d="M930.2 381.9h1.5v1.5h-1.5z" fill="#fff" opacity="0.58"/>
+<path d="M1389.3 240.9h1.5v1.5h-1.5z" fill="#fff" opacity="0.64"/>
+<path d="M1005.3 611.3h1.5v1.5h-1.5z" fill="#fff" opacity="0.58"/>
+<path d="M1119.3 624.3h1.5v1.5h-1.5z" fill="#fff" opacity="0.50"/>
+<path d="M441.8 580.1h1.5v1.5h-1.5z" fill="#fff" opacity="0.62"/>
+<path d="M1167.4 642.0h1.5v1.5h-1.5z" fill="#fff" opacity="0.37"/>
+<path d="M1185.2 340.2h1.5v1.5h-1.5z" fill="#fff" opacity="0.62"/>
+<path d="M1538.6 623.2h1.5v1.5h-1.5z" fill="#fff" opacity="0.19"/>
+<path d="M1062.7 647.3h1.5v1.5h-1.5z" fill="#fff" opacity="0.49"/>
+<path d="M725.4 179.7h1.5v1.5h-1.5z" fill="#fff" opacity="0.63"/>
+<path d="M493.3 164.7h1.5v1.5h-1.5z" fill="#fff" opacity="0.59"/>
+<path d="M954.3 609.5h1.5v1.5h-1.5z" fill="#fff" opacity="0.55"/>
+<path d="M1332.5 269.6h1.5v1.5h-1.5z" fill="#fff" opacity="0.43"/>
+<path d="M1157.1 234.5h1.5v1.5h-1.5z" fill="#fff" opacity="0.32"/>
+<path d="M1112.4 472.8h1.5v1.5h-1.5z" fill="#fff" opacity="0.47"/>
+<path d="M1332.2 535.8h1.5v1.5h-1.5z" fill="#fff" opacity="0.37"/>
+<path fill="url(#shade)" d="M0 0h1600v760H0z"/>
+<path fill="url(#vignette)" d="M0 0h1600v760H0z"/>
+</svg>

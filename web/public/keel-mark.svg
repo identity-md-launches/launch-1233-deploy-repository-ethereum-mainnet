@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="chrome" x1="9" y1="4" x2="55" y2="60" gradientUnits="userSpaceOnUse"><stop stop-color="#68696c"/><stop offset=".2" stop-color="#fff"/><stop offset=".38" stop-color="#a6a8ac"/><stop offset=".49" stop-color="#303236"/><stop offset=".53" stop-color="#e8e9eb"/><stop offset=".72" stop-color="#fff"/><stop offset="1" stop-color="#6b6d72"/></linearGradient>
+    <linearGradient id="fold" x1="24" y1="13" x2="43" y2="51" gradientUnits="userSpaceOnUse"><stop stop-color="#f6f6f6"/><stop offset=".49" stop-color="#999ba0"/><stop offset=".5" stop-color="#202124"/><stop offset="1" stop-color="#dfdfe3"/></linearGradient>
+  </defs>
+  <path d="M11 6h14v23L45 6h17L37 33l24 25H42L25 40v18H11V6Z" fill="url(#chrome)"/>
+  <path d="M25 29 45 6h17L37 33l24 25H42L25 40V29Z" fill="url(#fold)"/>
+  <path d="M12 7h12v50M26 29 46 7h13M38 34l21 23" stroke="#fff" stroke-opacity=".64" stroke-width=".8"/>
+</svg>

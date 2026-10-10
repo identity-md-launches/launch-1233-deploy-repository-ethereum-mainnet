@@ -1,8 +1,77 @@
 # Keel
 
-Ethereum mainnet launchpad contracts. Each project has a permanently locked TOKEN/IMD Uniswap v4 position. A 1% IMD swap fee funds the team, creator and continued IMD work. This deliverable contains the contracts, vendored dependencies, offline tests and operating documentation; it contains no website or deployment transaction.
+Ethereum mainnet launchpad contracts and a static Keel website. Each project has a permanently locked TOKEN/IMD Uniswap v4 position. A 1% IMD swap fee funds the team, creator and continued IMD work. The website reads Ethereum directly and uses an injected wallet for transactions. This website task did not change or deploy any contract.
 
-## Build and test
+## Website
+
+The ready-to-publish site is in **[dist/](dist/)**. React/TypeScript source, its package manifest, lockfile and Vite configuration live under **[web/](web/)**. The existing Solidity configuration and `src/` are unchanged. The initial route is a walkable island; Skip opens the market. Direct links use hash routes: `#/market`, `#/launch`, `#/how` and `#/token/<launched-token-address>`.
+
+### Install, preview and rebuild
+
+Use Node **22.12 or newer** and npm. This delivery was built with Node 26.11.1 and npm 12.2.0. From the repository root:
+
+```sh
+npm --prefix web ci
+npm --prefix web run typecheck
+npm --prefix web run build
+npm --prefix web run preview
+```
+
+Preview opens at `http://localhost:4173/`. For development, run `npm --prefix web run dev`. To serve the committed export without installing dependencies:
+
+```sh
+python3 -m http.server 4173 --bind 127.0.0.1 --directory dist
+```
+
+`build` runs `tsc --noEmit`, then Vite, replacing root `dist/`. Rebuild after source changes and include the entire export in the submission alongside `web/package.json` and `web/package-lock.json`. `base: './'`, relative asset references and hash navigation support IPFS gateway subpaths without rewrite rules. All site art, font files and font licenses are bundled locally. There are no environment variables, keys, backend services or runtime package downloads.
+
+Keep generated dependencies outside the submission. No ignore file was changed. After local checks, remove `web/node_modules` before collecting changed files; `npm ci` restores it. Do not include caches, browser binaries, temporary verification artifacts or npm archives. Browser/Foundry scaffolding in `test/scratch/` is disposable.
+
+### Publish on IPFS
+
+Publish the **contents represented by the root `dist/` directory**, not the source tree. With a running Kubo node:
+
+```sh
+ipfs add -r --cid-version=1 dist
+```
+
+Use the resulting directory CID, pin it with your node or pinning service, and open its gateway path ending in `/ipfs/<directory-CID>/`. Keep the trailing slash. An ENS name can point its contenthash to that same CID. Upload `index.html`, `assets/`, the SVGs, `fonts/` and notices together. The publisher serves this export; it does not need to rebuild it. This task produced and locally served the export; it did not publish a CID or change an ENS record.
+
+### Chain and wallet behavior
+
+[web/src/config.ts](web/src/config.ts) is the single frontend address/network configuration. It pins Ethereum chain 1, deployment block 26162060, both public RPC endpoints, the launch contracts, IMD, PoolManager and StateView. Reads retry the other endpoint with bounded timeouts. Launch/run event scans begin at the deployment block, use adaptive block windows and rewind 12 blocks on refresh. A loaded market uses one block for events, balances and pool state. Failed reads show an unavailable state, never fabricated zeros. Refresh runs every minute and is also available manually.
+
+The market is populated exclusively from `Launched`; builds from `RunVerified`; baskets and close terms from the vault; spot prices from the canonical pool's `sqrtPriceX96`. Market cap uses actual total supply. Hook fees awaiting distribution are shown separately. Quotes use KeelRouter and exact integer units. UI price/cap figures are spot estimates, distinct from transaction quotes.
+
+Before wallet writes, the client verifies deployed runtime bytecode and immutable wiring against the pinned source. Wallets must be on Ethereum mainnet. Buy/sell use IMD and KeelRouter; approvals cover only the exact input when existing allowance is insufficient. The review shows an editable minimum output and absolute deadline. Quotes become stale after 60 seconds. Launches, approvals, swaps and claims are simulated before wallet submission and report receipt status.
+
+When `factory.paused()` is true, the launch form remains an editable preview and its launch button is disabled. A signed response can be pasted into **Launch permit** (`projectRef`, `startTick`, `deadline`, `signature`). No launch-gate endpoint was supplied, so no API endpoint or permit is invented. The UI validates the response and contract field limits before asking for a wallet.
+
+`RunVerified` contains a **hash of the job UUID**, not the UUID itself. The run feed links the verification transaction and offers an original-job-ID input. It verifies the supplied UUID against the emitted hash before exposing the real `explorer.imd.fun/jobs/<uuid>` link. Arbitrary hashes cannot automatically resolve without additional published data. No nonexistent `/jobs/<hash>` links are fabricated.
+
+### Validation and source pins
+
+The production build and independent typecheck passed. Browser validation inspected the actual export at a nested `/preview/` path on desktop and phone, checked primary interactions and RPC failure recovery, and ran accessibility scans. Transaction helpers were exercised with a local injected-wallet mock; no on-chain transaction was sent. At the observed live mainnet blocks the factory was paused, with no launches or verified runs.
+
+See [the consolidated review and actual results](docs/website/validation.md), [browser evidence](docs/website/validation-browser.md), [chain verification](web/chain-verification.md), and [DESIGN.md](DESIGN.md). Screenshots in `docs/website/` (also exported to `artifacts/`) show real live/empty states; synthetic token fixtures were confined to tests and never shipped as site data or screenshots.
+
+Repeat the deterministic chain and wallet checks after `npm ci`:
+
+```sh
+node web/scripts/check-chain.mjs
+# Optional live RPC/deployment check:
+node web/scripts/check-chain.mjs --live
+# Needed for ABI regeneration and the fully mocked wallet integration checks:
+forge build --out test/scratch/forge-out --cache-path test/scratch/forge-cache
+node web/scripts/generate-abis.mjs
+node web/scripts/check-wallet.mjs
+```
+
+The generator recursively sorts ABI object keys, preserves array order, computes Keccak-256 and checks all four pinned ABI hashes and creation-code hashes. KeelHook is derived from the same source and its factory creation code. ABI JSON and immutable-masked runtime fingerprints are already included; normal frontend builds do not need Foundry.
+
+Design review follows the pinned Better Interface guide (Jakub Krehel, MIT) and its Impeccable documentation guidance (Paul Bakaus, Apache-2.0). Attribution and both license texts are retained in [docs/BETTER_INTERFACE_LICENSE](docs/BETTER_INTERFACE_LICENSE). Font origins/licenses are in [web/public/fonts/](web/public/fonts/); bundled runtime library notices are in [web/public/THIRD_PARTY_LICENSES.txt](web/public/THIRD_PARTY_LICENSES.txt).
+
+## Contract build and test
 
 ```sh
 forge build

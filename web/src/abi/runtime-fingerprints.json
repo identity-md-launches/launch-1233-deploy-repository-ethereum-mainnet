@@ -1,0 +1,146 @@
+{
+  "KeelToken": {
+    "bytes": 4100,
+    "normalizedKeccak": "0xfc606b345a76849f5706991df3921122b1243907e23044b3c4c03650ce9c3e18",
+    "immutableReferences": []
+  },
+  "KeelVault": {
+    "bytes": 9531,
+    "normalizedKeccak": "0x3f3f6981ce9e2cc697b618b163f1dd6df4889dc659ebb5da8914e39b567f4d25",
+    "immutableReferences": []
+  },
+  "KeelFactory": {
+    "bytes": 15689,
+    "normalizedKeccak": "0x006506396b2665b3512193fc5f24f8700359994c5f1947e19581131fa62492a6",
+    "immutableReferences": [
+      {
+        "start": 378,
+        "length": 32
+      },
+      {
+        "start": 951,
+        "length": 32
+      },
+      {
+        "start": 2140,
+        "length": 32
+      },
+      {
+        "start": 2182,
+        "length": 32
+      },
+      {
+        "start": 2388,
+        "length": 32
+      },
+      {
+        "start": 3001,
+        "length": 32
+      },
+      {
+        "start": 4155,
+        "length": 32
+      },
+      {
+        "start": 4384,
+        "length": 32
+      },
+      {
+        "start": 4571,
+        "length": 32
+      },
+      {
+        "start": 4627,
+        "length": 32
+      },
+      {
+        "start": 5082,
+        "length": 32
+      },
+      {
+        "start": 5194,
+        "length": 32
+      },
+      {
+        "start": 7373,
+        "length": 32
+      },
+      {
+        "start": 7578,
+        "length": 32
+      },
+      {
+        "start": 8556,
+        "length": 32
+      },
+      {
+        "start": 15229,
+        "length": 32
+      },
+      {
+        "start": 15283,
+        "length": 32
+      },
+      {
+        "start": 15362,
+        "length": 32
+      },
+      {
+        "start": 15400,
+        "length": 32
+      },
+      {
+        "start": 15472,
+        "length": 32
+      }
+    ]
+  },
+  "KeelRouter": {
+    "bytes": 17070,
+    "normalizedKeccak": "0x602a1c455945c02023b08bf4c36edbc1cb0e655be7c9e3768f498811a5fbb19d",
+    "immutableReferences": [
+      {
+        "start": 848,
+        "length": 32
+      },
+      {
+        "start": 13526,
+        "length": 32
+      },
+      {
+        "start": 13692,
+        "length": 32
+      },
+      {
+        "start": 14282,
+        "length": 32
+      }
+    ]
+  },
+  "KeelHook": {
+    "bytes": 4440,
+    "normalizedKeccak": "0xd9e51341b95d972a7314d6dab881442a8b3aef4cce5e8d8f906f1ab6ab9b7b6d",
+    "immutableReferences": [
+      {
+        "start": 201,
+        "length": 32
+      },
+      {
+        "start": 339,
+        "length": 32
+      },
+      {
+        "start": 1287,
+        "length": 32
+      },
+      {
+        "start": 2643,
+        "length": 32
+      },
+      {
+        "start": 3260,
+        "length": 32
+      }
+    ]
+  }
+}
